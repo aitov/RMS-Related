@@ -2,17 +2,9 @@
 
 echo "Starting bin collecting"
 
-# Pi
-#source ~/vRMS/bin/activate
-# Intel
-#source ~/anaconda3/envs/RMS/bin/activate
-# M2
-source ~/.conda/envs/rms/bin/activate
+. activate.sh
 
-# M2
-#captured_files=~/home/pi/RMS_data/CapturedFiles
-# Pi
-captured_files=~/pi/RMS_data/CapturedFiles
+captured_files="$home_folder/pi/RMS_data/CapturedFiles"
 
 target_folder=$(python -c "import SelectDialog; print(SelectDialog.select_folder('$captured_files'))")
 
@@ -24,7 +16,7 @@ if [ ! -d "$target_folder" ]; then
 fi
 
 bin_files=$(find "$target_folder" -type f -name "FR_*.bin")
-if [ ${#bin_files[@]} -eq 0 ]; then
+if [ -z "$bin_files" ]; then
   echo "No bin files found, skipping processing"
   read -n 1 -s -r -p "Press any key to exit"
   echo
