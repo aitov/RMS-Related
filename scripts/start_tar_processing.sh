@@ -35,7 +35,7 @@ if [ -e "$missed_fit_files" ] && [ $(wc -c < "$missed_fit_files") -gt 0 ]
     echo "Exists missed fit files, copy from Captured and then restart script"
     read -n 1 -s -r -p "Press any key to exit"
     echo
-    open -e "$unpack_folder/missed_fit_files.txt"
+    open -e "$missed_fit_files"
     exit
 fi
 
