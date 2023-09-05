@@ -10,7 +10,7 @@ if [ -z "$1" ]; then
 fi
 rms_source_folder="$1"
 if [ ! -d "$rms_source_folder" ]; then
-  echo "RMS Source folder not found: $source_folder"
+  echo "RMS Source folder not found: $rms_source_folder"
   read -n 1 -s -r -p "Press any key to exit"
   echo
   exit
