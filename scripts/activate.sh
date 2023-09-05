@@ -1,7 +1,7 @@
 # Raspberry Pi
 if [[ "$OSTYPE" == "linux-gnu"* ]]; then
   source ~/vRMS/bin/activate
-  rms_folder=~/pi/source/RMS
+  rms_folder=~/source/RMS
   home_folder=/home
 elif [[ "$OSTYPE" == "darwin"* ]]; then
   # Mac Apple Silicon
