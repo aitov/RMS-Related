@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Copy all bins + fits from selected folder to selected folder + _bins
+
 echo "Starting bin collecting"
 
 . activate.sh
