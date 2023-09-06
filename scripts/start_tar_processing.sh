@@ -5,7 +5,7 @@
 # 2. Unpack archive to folder without _detected suffix (with original name);
 # 3. Checks that all FR_*.bin files have FF_*.fits for video processing;
 # 4. If some fits files missed - creates text file <folder_name>_missed_fits.txt with list of files and pauses execution;
-# 5. If some fits missed it expects folder created by script <TBD> : <folder_name>_missed_fits and copied to parent folder;
+# 5. If some fits missed it expects folder created by copy_required_fits.sh : <folder_name>_missed_fits and copied to parent folder;
 # 6. After press any key : it reads file <folder_name>_missed_fits.txt and tries copy fits from <folder_name>_missed_fits;
 # 7. If something missed it will ask to stop or continue (it leads to generate transparent videos);
 # 8. After it executes common script folder_processing.sh (see documentation in folder_processing script);
