@@ -23,7 +23,7 @@ find "$unpack_folder" -type f -name "FR_*.bin" -print0 |
     bin_file_name=$(basename "$bin_file")
     fit_file_base="$(echo "$bin_file_name" | cut -f 1 -d '.')"
     fit_file_name="FF${fit_file_base:2}.fits"
-    if [ ! -f "$fit_file_name" ]
+    if [ ! -f "$unpack_folder/$fit_file_name" ]
      then
        echo "Missed : $fit_file_name"
        echo "$fit_file_name" >> "$missed_fit_files"
