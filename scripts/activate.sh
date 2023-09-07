@@ -12,8 +12,4 @@ if [ -e "local.properties" ]; then
   source "local.properties"
 fi
 
-echo "venv: $venv"
-echo "rms_folder: $rms_folder"
-echo "home_folder: $home_folder"
-
 source "$venv/bin/activate"
