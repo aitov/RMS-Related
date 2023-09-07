@@ -93,5 +93,45 @@ fi
 
 . folder_processing.sh "$rms_folder" "$unpack_folder"
 
+
+rms_results_folder="${unpack_folder}_results/rms"
+
+if [ ! -d "$rms_results_folder" ]; then
+  mkdir "$rms_results_folder"
+fi
+
+find "$unpack_folder" -type f -name "FTPdetectinfo_*.txt" -print0 |
+  while IFS= read -r -d '' file; do
+    cp "$file" "$rms_results_folder"
+  done
+
+find "$unpack_folder" -type f -name "*.png" -print0 |
+  while IFS= read -r -d '' file; do
+    cp "$file" "$rms_results_folder"
+  done
+
+find "$unpack_folder" -type f -name "*.csv" -print0 |
+  while IFS= read -r -d '' file; do
+    cp "$file" "$rms_results_folder"
+  done
+
+find "$unpack_folder" -type f -name "*.ecsv" -print0 |
+  while IFS= read -r -d '' file; do
+    cp "$file" "$rms_results_folder"
+  done
+
+find "$unpack_folder" -type f -name "*.klm" -print0 |
+  while IFS= read -r -d '' file; do
+    cp "$file" "$rms_results_folder"
+  done
+
+
+cp "$unpack_folder/.config" "$rms_results_folder"
+cp "$unpack_folder/platepar_cmn2010.cal" "$rms_results_folder"
+
+rm -r "$unpack_folder"
+rm -r "${unpack_folder}_processed"
+#rm "$tar_file"
+
 read -n 1 -s -r -p "Press any key to exit"
 echo

@@ -52,10 +52,12 @@ if [ ! -d "$processed_folder" ]; then
   mkdir "$processed_folder"
 fi
 
-results_folder="$processed_folder/results"
+results_folder=$source_folder"_results"
+
 if [ ! -d "$results_folder" ]; then
   mkdir "$results_folder"
 fi
+
 echo "Copy bins with fits and mp4 to processed folder: $processed_folder"
 find "$source_folder" -type f -name "FR_*.bin" -print0 |
   while IFS= read -r -d '' bin_file; do
@@ -77,7 +79,7 @@ read -r -p "Do you want to run SkyFit2? (y/n) " yn
 case $yn in
 [yY])
   python -m Utils.SkyFit2 "$processed_folder" --config "$processed_folder/.config" --fr
-  ftp_files=$(find "$processed_folder" -type f -name "FTPdetectinfo_*.txt");
+  ftp_files=$(find "$processed_folder" -type f -name "FTPdetectinfo_*.txt")
   if [ -z "$ftp_files" ]; then
     echo "No FTPdetectinfo files found, skipping converting"
     read -n 1 -s -r -p "Press any key to exit"
