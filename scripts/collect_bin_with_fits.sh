@@ -25,7 +25,7 @@ if [ -z "$bin_files" ]; then
   exit
 fi
 
-processed_folder=$target_folder"_bins"
+processed_folder=$target_folder"_bins_fits"
 
 if [ ! -d "$processed_folder" ]; then
   mkdir "$processed_folder"

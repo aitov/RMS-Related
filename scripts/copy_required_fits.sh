@@ -7,9 +7,16 @@ echo "Starting bin collecting"
 . activate.sh
 
 captured_files="$home_folder/pi/RMS_data/CapturedFiles"
-missed_fit_file=$(python -c "import SelectDialog; print(SelectDialog.select_file('$archive_files', '*.bz2'))")
+missed_fits_files=$(python -c "import SelectDialog; print(SelectDialog.select_file('$captured_files', '*.txt'))")
 
-target_folder=$(python -c "import SelectDialog; print(SelectDialog.select_folder('$captured_files'))")
+if [[ ! $missed_fits_files = *_missed_fits.txt ]]; then
+  echo "Missed fits file should ends with : _missed_fits.txt"
+  read -n 1 -s -r -p "Press any key to exit"
+  echo
+  exit
+fi
+
+target_folder=${missed_fits_files%"_missed_fits.txt"}
 
 if [ ! -d "$target_folder" ]; then
   echo "Source folder not found: $target_folder"
@@ -18,31 +25,20 @@ if [ ! -d "$target_folder" ]; then
   exit
 fi
 
-bin_files=$(find "$target_folder" -type f -name "FR_*.bin")
-if [ -z "$bin_files" ]; then
-  echo "No bin files found, skipping processing"
-  read -n 1 -s -r -p "Press any key to exit"
-  echo
-  exit
+missed_fits_folder=$target_folder"_missed_fits"
+
+if [ ! -d "$missed_fits_folder" ]; then
+  mkdir "$missed_fits_folder"
 fi
 
-processed_folder=$target_folder"_bins"
-
-if [ ! -d "$processed_folder" ]; then
-  mkdir "$processed_folder"
-fi
-
-echo "Copy bins with fits to folder: $processed_folder"
-find "$target_folder" -type f -name "FR_*.bin" -print0 |
-    while IFS= read -r -d '' bin_file; do
-      bin_file_name=$(basename "$bin_file")
-      echo "Copy bin file: $bin_file_name"
-      cp "$bin_file" "$processed_folder"
-      fit_file_base="$(echo "$bin_file_name" | cut -f 1 -d '.')"
-      fit_file_name="FF${fit_file_base:2}.fits"
-      echo "Copy fits file: $fit_file_name"
-      cp "$target_folder/$fit_file_name" "$processed_folder"
-    done
+while IFS= read -r missed_fit_file; do
+  if [ ! -f "$target_folder/$missed_fit_file" ]; then
+    echo "Missed fits file not found: $missed_fit_file"
+  else
+    echo "Copy missed fits file: $missed_fit_file"
+    cp "$target_folder/$missed_fit_file" "$missed_fits_folder"
+  fi
+done <"$missed_fits_files"
 
 read -n 1 -s -r -p "Press any key to exit"
 echo
