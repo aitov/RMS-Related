@@ -25,6 +25,3 @@ find . -type f -name "*.sh" -print0 |
   done
 
 . start_folder_processing.sh
-
-read -n 1 -s -r -p "Press any key to exit"
-echo
