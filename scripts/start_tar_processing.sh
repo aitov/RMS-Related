@@ -128,6 +128,7 @@ find "$unpack_folder" -type f -name "*.klm" -print0 |
 
 cp "$unpack_folder/.config" "$rms_results_folder"
 cp "$unpack_folder/platepar_cmn2010.cal" "$rms_results_folder"
+cp "$unpack_folder/${unpack_folder_name}_timelapse.mp4" "$rms_results_folder"
 
 rm -r "$unpack_folder"
 rm -r "${unpack_folder}_processed"
