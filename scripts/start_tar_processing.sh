@@ -17,6 +17,15 @@ echo "Starting Tar processing"
 archive_files="$home_folder/pi/RMS_data/ArchivedFiles"
 
 tar_file=$(python -c "import SelectDialog; print(SelectDialog.select_file('$archive_files', '*.bz2'))")
+
+if [ -z "$tar_file" ]; then
+  echo "File not selected"
+  read -n 1 -s -r -p "Press any key to exit"
+  echo
+  exit
+fi
+
+
 unpack_folder=${tar_file%"_detected.tar.bz2"}
 
 if [ ! -d "$unpack_folder" ]; then
@@ -91,46 +100,14 @@ if [ ${#missed_files[@]} -gt 0 ]; then
   esac
 fi
 
-. folder_processing.sh "$rms_folder" "$unpack_folder"
+current_dir=$(pwd)
+. folder_processing.sh "$unpack_folder"
 
+cd "$current_dir"
 
-rms_results_folder="${unpack_folder}_results/rms"
+. photo_processing.sh "$unpack_folder"
 
-if [ ! -d "$rms_results_folder" ]; then
-  mkdir "$rms_results_folder"
-fi
-
-find "$unpack_folder" -type f -name "FTPdetectinfo_*.txt" -print0 |
-  while IFS= read -r -d '' file; do
-    cp "$file" "$rms_results_folder"
-  done
-
-find "$unpack_folder" -type f -name "*.png" -print0 |
-  while IFS= read -r -d '' file; do
-    cp "$file" "$rms_results_folder"
-  done
-
-find "$unpack_folder" -type f -name "*.csv" -print0 |
-  while IFS= read -r -d '' file; do
-    cp "$file" "$rms_results_folder"
-  done
-
-find "$unpack_folder" -type f -name "*.ecsv" -print0 |
-  while IFS= read -r -d '' file; do
-    cp "$file" "$rms_results_folder"
-  done
-
-find "$unpack_folder" -type f -name "*.klm" -print0 |
-  while IFS= read -r -d '' file; do
-    cp "$file" "$rms_results_folder"
-  done
-
-
-cp "$unpack_folder/.config" "$rms_results_folder"
-cp "$unpack_folder/platepar_cmn2010.cal" "$rms_results_folder"
-cp "$unpack_folder/${unpack_folder_name}_timelapse.mp4" "$rms_results_folder"
-
-rm -r "$unpack_folder"
+#rm -r "$unpack_folder"
 rm -r "${unpack_folder}_processed"
 #rm "$tar_file"
 

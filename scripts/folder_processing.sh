@@ -3,26 +3,12 @@ echo "Starting processing"
 echo
 
 if [ -z "$1" ]; then
-  echo "Please specify RMS source folder"
-  read -n 1 -s -r -p "Press any key to exit"
-  echo
-  exit
-fi
-rms_source_folder="$1"
-if [ ! -d "$rms_source_folder" ]; then
-  echo "RMS Source folder not found: $rms_source_folder"
-  read -n 1 -s -r -p "Press any key to exit"
-  echo
-  exit
-fi
-
-if [ -z "$2" ]; then
   echo "Please specify source folder"
   read -n 1 -s -r -p "Press any key to exit"
   echo
   exit
 fi
-source_folder="$2"
+source_folder="$1"
 
 if [ ! -d "$source_folder" ]; then
   echo "Source folder not found: $source_folder"
@@ -31,7 +17,7 @@ if [ ! -d "$source_folder" ]; then
   exit
 fi
 
-cd "$rms_source_folder" || exit
+cd "$rms_folder" || exit
 
 echo "Using source folder : $source_folder"
 
@@ -98,3 +84,53 @@ case $yn in
     done
   ;;
 esac
+
+
+rms_results_folder="${source_folder}_results/rms"
+
+if [ ! -d "$rms_results_folder" ]; then
+  mkdir "$rms_results_folder"
+fi
+
+find "$source_folder" -type f -name "FTPdetectinfo_*.txt" -print0 |
+  while IFS= read -r -d '' file; do
+    cp "$file" "$rms_results_folder"
+  done
+
+find "$source_folder" -type f -name "*.png" -print0 |
+  while IFS= read -r -d '' file; do
+    cp "$file" "$rms_results_folder"
+  done
+
+find "$source_folder" -type f -name "*.jpg" -print0 |
+  while IFS= read -r -d '' file; do
+    cp "$file" "$rms_results_folder"
+  done
+
+find "$source_folder" -type f -name "*.csv" -print0 |
+  while IFS= read -r -d '' file; do
+    cp "$file" "$rms_results_folder"
+  done
+
+find "$source_folder" -type f -name "*.ecsv" -print0 |
+  while IFS= read -r -d '' file; do
+    cp "$file" "$rms_results_folder"
+  done
+
+find "$source_folder" -type f -name "*.klm" -print0 |
+  while IFS= read -r -d '' file; do
+    cp "$file" "$rms_results_folder"
+  done
+
+platepars_file="$source_folder/platepars_all_recalibrated.json"
+
+if [ -f "$platepars_file" ]; then
+  platepars_file_name=$(basename "$platepars_file")
+  zip "$source_folder/${platepars_file_name}.zip" "$platepars_file"
+  cp "$source_folder/${platepars_file_name}.zip" "$rms_results_folder"
+fi
+source_folder_name=$(basename "$source_folder")
+
+cp "$source_folder/.config" "$rms_results_folder"
+cp "$source_folder/platepar_cmn2010.cal" "$rms_results_folder"
+cp "$source_folder/${source_folder_name}_timelapse.mp4" "$rms_results_folder"
