@@ -6,4 +6,4 @@ Useful scripts for local or remote (directly on Raspberry Pi) processing meteors
 2. Creates folder for manual fireball detection for SkyFit2;
 3. Run bin viewer for meteors confirmation;
 4. Creates meteors stacks and jpg for detected meteors;
-5. Collects all generated result to one folder for local download;
+5. Collects all generated results to one folder for local download;
