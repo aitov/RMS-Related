@@ -10,6 +10,13 @@ captured_files="$home_folder/pi/RMS_data/CapturedFiles"
 
 target_folder=$(python -c "import SelectDialog; print(SelectDialog.select_folder('$captured_files'))")
 
+if [ -z "$tar_file" ]; then
+  echo "Folder not selected"
+  read -n 1 -s -r -p "Press any key to exit"
+  echo
+  exit
+fi
+
 if [ ! -d "$target_folder" ]; then
   echo "Source folder not found: $target_folder"
   read -n 1 -s -r -p "Press any key to exit"
