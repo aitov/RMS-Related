@@ -1,6 +1,6 @@
 # Inits variables and activates python env
 # For execution on RMS Raspberry Pi - no need do additional action - used default values
-# For local execution : required variables could be overriden required by local paths
+# For local execution : required variables could be overriden by local paths
 # Use local.properties.template file as example, override required properties and copy it with name : local.properties
 
 # Default properties for Raspberry Pi

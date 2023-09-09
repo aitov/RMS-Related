@@ -1,4 +1,4 @@
 venv=~/vRMS
 rms_folder=~/source/RMS
-bin_viewer_folder=~/home/projects/cmn_binviewer
+bin_viewer_folder=~/source/cmn_binviewer
 home_folder=/home
