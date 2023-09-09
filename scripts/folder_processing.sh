@@ -39,7 +39,7 @@ echo "Using source folder : $source_folder"
 bin_files=$(find "$source_folder" -type f -name "FR_*.bin")
 if [ -z "$bin_files" ]; then
   echo "No bin files found, skipping processing"
-  read -n 1 -s -r -p "Press any key to exit"
+  read -n 1 -s -r -p "Press any key to continue"
   echo
   return 1
 fi
