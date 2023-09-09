@@ -16,6 +16,7 @@
 echo "Starting Tar processing"
 
 archive_files="$home_folder/pi/RMS_data/ArchivedFiles"
+processed_files="$home_folder/pi/RMS_data/ProcessedFiles"
 
 tar_file=$(python -c "import SelectDialog; print(SelectDialog.select_file('$archive_files', '*.bz2'))")
 
@@ -101,15 +102,27 @@ if [ ${#missed_files[@]} -gt 0 ]; then
   esac
 fi
 
+if [ ! -d "$processed_files" ]; then
+  mkdir "$processed_files"
+fi
+
+results_folder="$processed_files/$unpack_folder_name"
+
+if [ ! -d "$results_folder" ]; then
+  mkdir "$results_folder"
+fi
+
 current_dir=$(pwd)
 
-. folder_processing.sh "$unpack_folder"
+. folder_processing.sh "$unpack_folder" "$results_folder"
 
 cd "$current_dir"
 
-. photo_processing.sh "$unpack_folder"
+. photo_processing.sh "$unpack_folder" "$results_folder"
+if [ -d "${unpack_folder}" ]; then
+  rm -r "$unpack_folder"
+fi
 
-#rm -r "$unpack_folder"
 if [ -d "${unpack_folder}_processed" ]; then
   rm -r "${unpack_folder}_processed"
 fi
