@@ -41,7 +41,7 @@ if [ -z "$bin_files" ]; then
   echo "No bin files found, skipping processing"
   read -n 1 -s -r -p "Press any key to exit"
   echo
-  exit
+  return 1
 fi
 
 echo "Generating mp4 for bins in : $source_folder"

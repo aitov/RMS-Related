@@ -119,8 +119,10 @@ current_dir=$(pwd)
 cd "$current_dir"
 
 . photo_processing.sh "$unpack_folder" "$results_folder"
+if [ -d "${unpack_folder}" ]; then
+  rm -r "$unpack_folder"
+fi
 
-#rm -r "$unpack_folder"
 if [ -d "${unpack_folder}_processed" ]; then
   rm -r "${unpack_folder}_processed"
 fi
