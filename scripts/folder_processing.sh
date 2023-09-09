@@ -17,6 +17,21 @@ if [ ! -d "$source_folder" ]; then
   exit
 fi
 
+if [ -z "$2" ]; then
+  echo "Please specify results folder"
+  read -n 1 -s -r -p "Press any key to exit"
+  echo
+  exit
+fi
+results_folder="$2"
+
+if [ ! -d "$results_folder" ]; then
+  echo "Results folder not found: $results_folder"
+  read -n 1 -s -r -p "Press any key to exit"
+  echo
+  exit
+fi
+
 cd "$rms_folder" || exit
 
 echo "Using source folder : $source_folder"
@@ -36,12 +51,6 @@ processed_folder=$source_folder"_processed"
 
 if [ ! -d "$processed_folder" ]; then
   mkdir "$processed_folder"
-fi
-
-results_folder=$source_folder"_results"
-
-if [ ! -d "$results_folder" ]; then
-  mkdir "$results_folder"
 fi
 
 echo "Copy bins with fits and mp4 to processed folder: $processed_folder"
@@ -86,7 +95,7 @@ case $yn in
 esac
 
 
-rms_results_folder="${source_folder}_results/rms"
+rms_results_folder="${results_folder}/rms"
 
 if [ ! -d "$rms_results_folder" ]; then
   mkdir "$rms_results_folder"
