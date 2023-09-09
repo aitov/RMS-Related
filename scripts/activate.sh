@@ -6,6 +6,7 @@
 # Default properties for Raspberry Pi
 venv=~/vRMS
 rms_folder=~/source/RMS
+bin_viewer_folder=~/source/cmn_binviewer
 home_folder=/home
 
 if [ -e "local.properties" ]; then

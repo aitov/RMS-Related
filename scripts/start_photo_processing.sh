@@ -12,7 +12,13 @@ if [ -z "$source_folder" ]; then
   exit
 fi
 
-. photo_processing.sh "$source_folder"
+results_folder=$source_folder"_results"
+
+if [ ! -d "$results_folder" ]; then
+  mkdir "$results_folder"
+fi
+
+. photo_processing.sh "$source_folder" "$results_folder"
 
 read -n 1 -s -r -p "Press any key to exit"
 echo

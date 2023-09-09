@@ -15,6 +15,21 @@ if [ ! -d "$source_folder" ]; then
   exit
 fi
 
+if [ -z "$2" ]; then
+  echo "Please specify results folder"
+  read -n 1 -s -r -p "Press any key to exit"
+  echo
+  exit
+fi
+results_folder="$2"
+
+if [ ! -d "$results_folder" ]; then
+  echo "Results folder not found: $results_folder"
+  read -n 1 -s -r -p "Press any key to exit"
+  echo
+  exit
+fi
+
 source_folder_name=$(basename "$source_folder")
 
 cd "$rms_folder" || exit
@@ -30,13 +45,6 @@ case $yn in
   echo "Starting TrackStack"
   python -m Utils.TrackStack "$source_folder" -x
 esac
-
-
-results_folder=$source_folder"_results"
-
-if [ ! -d "$results_folder" ]; then
-  mkdir "$results_folder"
-fi
 
 meteors_folder="$results_folder/meteors"
 

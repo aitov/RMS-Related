@@ -9,6 +9,7 @@
 # 6. After press any key : it reads file <folder_name>_missed_fits.txt and tries copy fits from <folder_name>_missed_fits;
 # 7. If something missed it will ask to stop or continue (it leads to generate transparent videos);
 # 8. After it executes common script folder_processing.sh (see documentation in folder_processing script);
+# 9. After folder processing executes common script photo_processing.sh (see documentation in photo_processing.sh script)
 
 . activate.sh
 
@@ -101,6 +102,7 @@ if [ ${#missed_files[@]} -gt 0 ]; then
 fi
 
 current_dir=$(pwd)
+
 . folder_processing.sh "$unpack_folder"
 
 cd "$current_dir"
@@ -108,7 +110,9 @@ cd "$current_dir"
 . photo_processing.sh "$unpack_folder"
 
 #rm -r "$unpack_folder"
-rm -r "${unpack_folder}_processed"
+if [ -d "${unpack_folder}_processed" ]; then
+  rm -r "${unpack_folder}_processed"
+fi
 #rm "$tar_file"
 
 read -n 1 -s -r -p "Press any key to exit"
