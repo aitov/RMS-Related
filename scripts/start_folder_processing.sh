@@ -36,10 +36,9 @@ current_dir=$(pwd)
 
 . folder_processing.sh "$source_folder" "$results_folder"
 
-if [ -d "${source_folder}_processed" ]; then
-  rm -r "${source_folder}_processed"
+if [ -d "${results_folder}_sky_fit" ]; then
+  rm -r "${results_folder}_sky_fit"
 fi
-
 
 cd "$bin_viewer_folder"
 
