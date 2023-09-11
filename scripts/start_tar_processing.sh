@@ -123,8 +123,8 @@ if [ -d "${unpack_folder}" ]; then
   rm -r "$unpack_folder"
 fi
 
-if [ -d "${unpack_folder}_processed" ]; then
-  rm -r "${unpack_folder}_processed"
+if [ -d "${results_folder}_sky_fit" ]; then
+  rm -r "${results_folder}_sky_fit"
 fi
 #rm "$tar_file"
 

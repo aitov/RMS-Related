@@ -43,7 +43,7 @@ read -r -p "Do you want to run TrackStack? (y/n) " yn
 case $yn in
 [yY])
   echo "Starting TrackStack"
-  python -m Utils.TrackStack "$source_folder" -x
+  python -m Utils.TrackStack "$source_folder" -c "$source_folder/.config" -x
 esac
 
 meteors_folder="$results_folder/meteors"
