@@ -7,6 +7,8 @@ echo "Starting bin collecting"
 . activate.sh
 
 captured_files="$home_folder/pi/RMS_data/CapturedFiles"
+processed_files="$home_folder/pi/RMS_data/ProcessedFiles"
+
 missed_fits_files=$(python -c "import SelectDialog; print(SelectDialog.select_file('$captured_files', '*.txt'))")
 
 if [[ ! $missed_fits_files = *_missed_fits.txt ]]; then
@@ -16,7 +18,11 @@ if [[ ! $missed_fits_files = *_missed_fits.txt ]]; then
   exit
 fi
 
-target_folder=${missed_fits_files%"_missed_fits.txt"}
+if [ ! -d "$processed_files" ]; then
+  mkdir "$processed_files"
+fi
+
+target_folder=${target_folder_name%"_missed_fits.txt"}
 
 if [ ! -d "$target_folder" ]; then
   echo "Source folder not found: $target_folder"
@@ -24,8 +30,8 @@ if [ ! -d "$target_folder" ]; then
   echo
   exit
 fi
-
-missed_fits_folder=$target_folder"_missed_fits"
+target_folder_name=$(basename "$missed_fits_files")
+missed_fits_folder="$processed_files/${target_folder_name}_missed_fits"
 
 if [ ! -d "$missed_fits_folder" ]; then
   mkdir "$missed_fits_folder"
