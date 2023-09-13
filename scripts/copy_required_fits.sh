@@ -7,6 +7,8 @@ echo "Starting bin collecting"
 . activate.sh
 
 captured_files="$home_folder/pi/RMS_data/CapturedFiles"
+processed_files="$home_folder/pi/RMS_data/ProcessedFiles"
+
 missed_fits_files=$(python -c "import SelectDialog; print(SelectDialog.select_file('$captured_files', '*.txt'))")
 
 if [[ ! $missed_fits_files = *_missed_fits.txt ]]; then
@@ -14,6 +16,10 @@ if [[ ! $missed_fits_files = *_missed_fits.txt ]]; then
   read -n 1 -s -r -p "Press any key to exit"
   echo
   exit
+fi
+
+if [ ! -d "$processed_files" ]; then
+  mkdir "$processed_files"
 fi
 
 target_folder=${missed_fits_files%"_missed_fits.txt"}
@@ -25,7 +31,8 @@ if [ ! -d "$target_folder" ]; then
   exit
 fi
 
-missed_fits_folder=$target_folder"_missed_fits"
+target_folder_name=$(basename "$target_folder")
+missed_fits_folder="$processed_files/${target_folder_name}_missed_fits"
 
 if [ ! -d "$missed_fits_folder" ]; then
   mkdir "$missed_fits_folder"
@@ -39,6 +46,8 @@ while IFS= read -r missed_fit_file; do
     cp "$target_folder/$missed_fit_file" "$missed_fits_folder"
   fi
 done <"$missed_fits_files"
+
+rm "$missed_fits_files"
 
 read -n 1 -s -r -p "Press any key to exit"
 echo
