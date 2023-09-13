@@ -22,7 +22,7 @@ if [ ! -d "$processed_files" ]; then
   mkdir "$processed_files"
 fi
 
-target_folder=${target_folder_name%"_missed_fits.txt"}
+target_folder=${missed_fits_files%"_missed_fits.txt"}
 
 if [ ! -d "$target_folder" ]; then
   echo "Source folder not found: $target_folder"
@@ -30,7 +30,8 @@ if [ ! -d "$target_folder" ]; then
   echo
   exit
 fi
-target_folder_name=$(basename "$missed_fits_files")
+
+target_folder_name=$(basename "$target_folder")
 missed_fits_folder="$processed_files/${target_folder_name}_missed_fits"
 
 if [ ! -d "$missed_fits_folder" ]; then
@@ -45,6 +46,8 @@ while IFS= read -r missed_fit_file; do
     cp "$target_folder/$missed_fit_file" "$missed_fits_folder"
   fi
 done <"$missed_fits_files"
+
+rm "$missed_fits_files"
 
 read -n 1 -s -r -p "Press any key to exit"
 echo
