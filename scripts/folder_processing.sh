@@ -41,61 +41,59 @@ if [ -z "$bin_files" ]; then
   echo "No bin files found, skipping processing"
   read -n 1 -s -r -p "Press any key to continue"
   echo
-  return 1
-fi
+else
+  echo "Generating mp4 for bins in : $source_folder"
+  python -m Utils.FRbinViewer -a -f mp4 -c "$source_folder/.config" "$source_folder"
+  # todo add -t when timestamp will be fixed
+  #python -m Utils.FRbinViewer -a -t -f mp4 -c "$source_folder/.config" "$source_folder"
 
-echo "Generating mp4 for bins in : $source_folder"
-python -m Utils.FRbinViewer -a -f mp4 -c "$source_folder/.config" "$source_folder"
-# todo add -t when timestamp will be fixed
-#python -m Utils.FRbinViewer -a -t -f mp4 -c "$source_folder/.config" "$source_folder"
+  sky_fit_folder="${results_folder}_sky_fit"
 
-sky_fit_folder="${results_folder}_sky_fit"
-
-if [ ! -d "$sky_fit_folder" ]; then
-  mkdir "$sky_fit_folder"
-fi
-
-echo "Copy bins with fits sky fit folder: $sky_fit_folder"
-find "$source_folder" -type f -name "FR_*.bin" -print0 |
-  while IFS= read -r -d '' bin_file; do
-    bin_file_name=$(basename "$bin_file")
-    echo "Copy bin file: $bin_file_name"
-    cp "$bin_file" "$sky_fit_folder"
-    fit_file_base="$(echo "$bin_file_name" | cut -f 1 -d '.')"
-    fit_file_name="FF${fit_file_base:2}.fits"
-    mp4_file_name="${fit_file_base}_line_00.mp4"
-    echo "Copy fits file: $fit_file_name"
-    cp "$source_folder/$fit_file_name" "$sky_fit_folder"
-    echo "Copy mp4 file: $mp4_file_name"
-    cp "$source_folder/$mp4_file_name" "$results_folder"
-  done
-cp "$source_folder/.config" "$sky_fit_folder"
-cp "$source_folder/platepar_cmn2010.cal" "$sky_fit_folder"
-
-read -r -p "Do you want to run SkyFit2? (y/n) " yn
-case $yn in
-[yY])
-  python -m Utils.SkyFit2 "$sky_fit_folder" --config "$sky_fit_folder/.config" --fr
-  ftp_files=$(find "$sky_fit_folder" -type f -name "FTPdetectinfo_*.txt")
-  if [ -z "$ftp_files" ]; then
-    echo "No FTPdetectinfo files found, skipping converting"
-    read -n 1 -s -r -p "Press any key to exit"
-    echo
-    exit
+  if [ ! -d "$sky_fit_folder" ]; then
+    mkdir "$sky_fit_folder"
   fi
-  find "$sky_fit_folder" -type f -name "FTPdetectinfo_*.txt" -print0 |
-    while IFS= read -r -d '' ftp_file; do
-      echo "Converting FTPdetectinfo to UFO csv: $ftp_file"
-      python -m Utils.RMS2UFO "$ftp_file" "$sky_fit_folder/platepar_cmn2010.cal"
-      ftp_file_name=$(basename "$ftp_file")
-      ftp_file_base="$(echo "$ftp_file_name" | cut -f 1 -d '.')"
-      csv_file_name="${ftp_file_base#"FTPdetectinfo_"}.csv"
-      echo "Copy converted csv file to results: $csv_file_name"
-      cp "$sky_fit_folder/$csv_file_name" "$results_folder"
-    done
-  ;;
-esac
 
+  echo "Copy bins with fits sky fit folder: $sky_fit_folder"
+  find "$source_folder" -type f -name "FR_*.bin" -print0 |
+    while IFS= read -r -d '' bin_file; do
+      bin_file_name=$(basename "$bin_file")
+      echo "Copy bin file: $bin_file_name"
+      cp "$bin_file" "$sky_fit_folder"
+      fit_file_base="$(echo "$bin_file_name" | cut -f 1 -d '.')"
+      fit_file_name="FF${fit_file_base:2}.fits"
+      mp4_file_name="${fit_file_base}_line_00.mp4"
+      echo "Copy fits file: $fit_file_name"
+      cp "$source_folder/$fit_file_name" "$sky_fit_folder"
+      echo "Copy mp4 file: $mp4_file_name"
+      cp "$source_folder/$mp4_file_name" "$results_folder"
+    done
+  cp "$source_folder/.config" "$sky_fit_folder"
+  cp "$source_folder/platepar_cmn2010.cal" "$sky_fit_folder"
+
+  read -r -p "Do you want to run SkyFit2? (y/n) " yn
+  case $yn in
+  [yY])
+    python -m Utils.SkyFit2 "$sky_fit_folder" --config "$sky_fit_folder/.config" --fr
+    ftp_files=$(find "$sky_fit_folder" -type f -name "FTPdetectinfo_*.txt")
+    if [ -z "$ftp_files" ]; then
+      echo "No FTPdetectinfo files found, skipping converting"
+      read -n 1 -s -r -p "Press any key to continue"
+      echo
+    else
+      find "$sky_fit_folder" -type f -name "FTPdetectinfo_*.txt" -print0 |
+        while IFS= read -r -d '' ftp_file; do
+          echo "Converting FTPdetectinfo to UFO csv: $ftp_file"
+          python -m Utils.RMS2UFO "$ftp_file" "$sky_fit_folder/platepar_cmn2010.cal"
+          ftp_file_name=$(basename "$ftp_file")
+          ftp_file_base="$(echo "$ftp_file_name" | cut -f 1 -d '.')"
+          csv_file_name="${ftp_file_base#"FTPdetectinfo_"}.csv"
+          echo "Copy converted csv file to results: $csv_file_name"
+          cp "$sky_fit_folder/$csv_file_name" "$results_folder"
+        done
+   fi
+  ;;
+  esac
+fi
 
 rms_results_folder="${results_folder}/rms"
 
