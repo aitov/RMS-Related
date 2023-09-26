@@ -2,8 +2,10 @@
 # Manual: https://wiki.veye.cc/index.php/VEYE-MIPI-290/327_i2c/
 # Forum: https://forum.veye.cc/topic/366/veye-mipi-imx462-manual-gain-not-consistent
 
+. veye_init.sh
 
-cd /home/pi/source/RMS/raspberrypi/i2c_cmd/bin/veye_mipi_i2c.sh -r -f brightness
+cd /home/pi/source/raspberrypi/i2c_cmd/bin
+
 chmod 777 *.sh
 sleep 1
 #PAL	PAL(50Hz)	25fps
