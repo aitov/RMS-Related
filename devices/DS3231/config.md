@@ -2,7 +2,7 @@
 Manual on RMS Github (for Pi 3 but will work for Pi 4) :
 https://github.com/CroatianMeteorNetwork/RMS/blob/master/Guides/rpi3_rtc_setup.md
 
-But for raspberry Py 4 you could skip items:
+But for raspberry Pi 4 you could skip items:
 6. Install the NTP daemon and
 7. Edit /etc/rc.local and add the hwclock command above the line that says exit 0
 
@@ -37,7 +37,7 @@ sudo timedatectl set-ntp on
 ```
   
 
-Some commands for checking rtc after connection to Pi
+Useful  commands for checking rtc after connection to Pi
 
 Check if RTC module could be detected   
 ```Shell
