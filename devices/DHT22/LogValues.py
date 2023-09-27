@@ -43,7 +43,8 @@ while running:
             time.sleep(timeout)
         else:
             time.sleep(0.1)
-
+    except RuntimeError:
+        time.sleep(0.1)
     except KeyboardInterrupt:
         print('Program stopped')
         running = False
