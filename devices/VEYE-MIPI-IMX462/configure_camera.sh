@@ -2,11 +2,10 @@
 # Manual: https://wiki.veye.cc/index.php/VEYE-MIPI-290/327_i2c/
 # Forum: https://forum.veye.cc/topic/366/veye-mipi-imx462-manual-gain-not-consistent
 
-. veye_init.sh
+. veye_lib_init.sh
 
 cd /home/pi/source/raspberrypi/i2c_cmd/bin
 
-chmod 777 *.sh
 sleep 1
 #PAL	PAL(50Hz)	25fps
 ./veye_mipi_i2c.sh -w -f videoformat -p1 PAL
@@ -41,7 +40,7 @@ sleep 1
 #sleep 1
 #./veye_mipi_i2c.sh -w -f new_mgain -p1 23	# 0.1 - 0.3 # between 20 and 25
 sleep 1
-./veye_mipi_i2c.sh -w -f brightness -p1 0
+./veye_mipi_i2c.sh -w -f brightness -p1 7
 sleep 1
 # special code for sky imaging, to turn automatic bad point correction off
 ./i2c_write 10 0x3b 0x0007 0xFE
@@ -53,10 +52,11 @@ sleep 1
 ./i2c_read 10 0x3b 0x0014 1
 ./veye_mipi_i2c.sh -w -f paramsave
 sleep 1
+# Uncomment if using new_expmode
 # make sure the params are correct
-./veye_mipi_i2c.sh -r -f new_expmode
-./veye_mipi_i2c.sh -r -f new_mgain
-./veye_mipi_i2c.sh -r -f new_mshutter
+#./veye_mipi_i2c.sh -r -f new_expmode
+#./veye_mipi_i2c.sh -r -f new_mgain
+#./veye_mipi_i2c.sh -r -f new_mshutter
 
 
 

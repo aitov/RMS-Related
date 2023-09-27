@@ -10,10 +10,14 @@ cd "source"
 if [ ! -d "raspberrypi" ]; then
   echo "Checkout raspberrypi repository"
   git clone https://github.com/veyeimaging/raspberrypi.git
+  cd "raspberrypi"
+else
+  cd "raspberrypi"
+  git reset --hard HEAD
+  git pull
 fi
-# TODO pull
 
-cd "raspberrypi/i2c_cmd/bin"
+cd "i2c_cmd/bin"
 
 find . -type f -name "*.*" -print0 |
   while IFS= read -r -d '' sh_file; do
