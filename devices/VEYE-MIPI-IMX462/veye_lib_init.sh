@@ -5,6 +5,8 @@ if [ ! -d "source" ]; then
   mkdir "source"
 fi
 
+cd "source"
+
 if [ ! -d "raspberrypi" ]; then
   echo "Checkout raspberrypi repository"
   git clone https://github.com/veyeimaging/raspberrypi.git

@@ -7,6 +7,13 @@
 # 5. Starts start_folder_processing.sh script form ~/RMS-Related/scripts folder
 
 cd ~
+
+if [ ! -d "source" ]; then
+  mkdir "source"
+fi
+
+cd "source"
+
 if [ ! -d "RMS-Related" ]; then
   echo "Checkout RMS-Related"
   git clone https://github.com/aitov/RMS-Related.git
