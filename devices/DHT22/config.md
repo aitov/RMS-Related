@@ -10,7 +10,11 @@ sudo /home/pi/source/RMS-Related/devices/DHT22/dht22_log.sh &
 Save and reboot
 
 # Add information about sensor values to conkyrc widget
-TBD
+```
+${font Arial:bold:size=10}${color Tan2}OUTSIDE SENSOR ${color DarkSlateGray}${hr 2}
+$font${color DimGray}Temperature: $alignr ${texeci 10 /home/pi/Desktop/DHT/temp.sh temp}
+$font${color DimGray}Humidity: $alignr ${texeci 10 /home/pi/Desktop/DHT/temp.sh hum}
+```
 
 
 
