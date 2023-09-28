@@ -4,9 +4,8 @@ https://github.com/CroatianMeteorNetwork/RMS/blob/master/Guides/rpi3_rtc_setup.m
 
 But for raspberry Pi 4 you could skip items:
 6. Install the NTP daemon and
-7. Edit /etc/rc.local and add the hwclock command above the line that says exit 0
 
-As it already covered by service : timedatectl
+and next as it already covered by service : `timedatectl`
 
 To get status run in terminal:
 
@@ -31,13 +30,13 @@ NTP service: inactive
 ``` 
 it means ntp lib installed and used ntpd service instead, if you want use embedded service - uninstall ntp 
 
-Also in case of manual time set, it could be enabled by command: 
+and also in case of manual time set, it could be enabled by command: 
 ```Shell
 sudo timedatectl set-ntp on
 ```
   
 
-Useful  commands for checking rtc after connection to Pi
+###Useful  commands for checking rtc after connection to Pi
 
 Check if RTC module could be detected   
 ```Shell
@@ -52,3 +51,6 @@ Set current time to RTC module
 ```Shell
 sudo hwclock -w
 ```
+
+### Python example usage
+In `ReadTimeExample.py` example of python usage of rtc module: read and set time
