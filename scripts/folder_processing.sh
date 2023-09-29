@@ -126,7 +126,7 @@ find "$source_folder" -type f -name "*.ecsv" -print0 |
     cp "$file" "$rms_results_folder"
   done
 
-find "$source_folder" -type f -name "*.klm" -print0 |
+find "$source_folder" -type f -name "*.kml" -print0 |
   while IFS= read -r -d '' file; do
     cp "$file" "$rms_results_folder"
   done
