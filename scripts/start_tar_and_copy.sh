@@ -3,7 +3,7 @@
 # start processing
 #. start_folder_processing.sh
 
-processed_folder=~/home/pi/RMS_data/ProcessedFiles/UA0004_20230929_163816_494732
+processed_folder=~/home/pi/RMS_data/ProcessedFiles/UA0003_20230929_161546_613065
 data_folder=~/home/pi/data
 backup_folder=/Volumes/Data/pi/data
 
@@ -16,7 +16,7 @@ fi
 
 folder_name=$(basename "$processed_folder")
 
-if [ ! "${folder_name:6:1}" = "_" ] && [ ! "${folder_name:6:1}" = "_" ]; then
+if [ ! "${folder_name:6:1}" = "_" ] || [ ! "${folder_name:15:1}" = "_" ]; then
   echo "Folder should in RMS format : XX0000_yyyymmdd_..."
   read -n 1 -s -r -p "Press any key to exit"
   echo
