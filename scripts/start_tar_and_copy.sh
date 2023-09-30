@@ -1,20 +1,15 @@
 #!/bin/bash
+. activate.sh
+. start_tar_processing.sh
 
-# start processing
-#. start_folder_processing.sh
-
-processed_folder=~/home/pi/RMS_data/ProcessedFiles/UA0003_20230929_161546_613065
-data_folder=~/home/pi/data
-backup_folder=/Volumes/Data/pi/data
-
-if [ ! -d "$processed_folder" ]; then
+if [ ! -d "$results_folder" ]; then
   echo "Please specify processed folder"
   read -n 1 -s -r -p "Press any key to exit"
   echo
   exit
 fi
 
-folder_name=$(basename "$processed_folder")
+folder_name=$(basename "$results_folder")
 
 if [ ! "${folder_name:6:1}" = "_" ] || [ ! "${folder_name:15:1}" = "_" ]; then
   echo "Folder should in RMS format : XX0000_yyyymmdd_..."
@@ -39,7 +34,7 @@ if [ ! -d "$stacks_folder" ]; then
 fi
 
 target_folder="$parent_target_folder/$folder_name"
-meteors_folder="$processed_folder/meteors"
+meteors_folder="$results_folder/meteors"
 
 
 if [ -d "$target_folder" ]; then
@@ -65,7 +60,7 @@ if [ -d "$meteors_folder" ]; then
   fi
 fi
 echo "Move folder to data: $folder_name"
-mv "$processed_folder" "$target_folder"
+mv "$results_folder" "$target_folder"
 
 if [ -n "$backup_folder" ]; then
   echo "Copy files to backup drive"
