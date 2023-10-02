@@ -34,7 +34,14 @@ remote_archive_files="/home/pi/RMS_data/ArchivedFiles"
 remote_captured_files="/home/pi/RMS_data/CapturedFiles"
 
 if [ ! -z "$ssh_host" ]; then
-    tar_files=($(ssh "$ssh_host" "cd $remote_archive_files && ls -t *.tar.bz2"))
+    ssh_port=22
+    # if custom port specified - extract it
+    if [[ $ssh_host == *":"* ]]; then
+      ssh_port=${ssh_host#*":"}
+      ssh_host=${ssh_host%":$ssh_port"}
+    fi
+
+    tar_files=($(ssh "$ssh_host" -p "$ssh_port" "cd $remote_archive_files && ls -t *.tar.bz2"))
     tar_files_string=$(printf ",\"%s\"" "${tar_files[@]}")
     tar_files_string=${tar_files_string:1}
 
@@ -45,7 +52,7 @@ if [ ! -z "$ssh_host" ]; then
       read -n 1 -s -r -p "Press any key to continue"
       echo
     else
-      rsync --progress -e ssh "$ssh_host:$remote_archive_files/$tar_file_name" "$archive_files"
+      rsync --progress -e "ssh -p $ssh_port" "$ssh_host:$remote_archive_files/$tar_file_name "  "$archive_files"
       tar_file="$archive_files/$tar_file_name"
     fi
 
