@@ -1,6 +1,9 @@
 #!/bin/bash
 . activate.sh
-. start_tar_processing.sh
+
+IFS=',' read -ra ssh_hosts_list <<< "$ssh_hosts"
+for ssh_host in "${ssh_hosts_list[@]}"; do
+  . start_tar_processing.sh
 
 if [ ! -d "$results_folder" ]; then
   echo "Please specify processed folder"
@@ -36,52 +39,7 @@ fi
 target_folder="$parent_target_folder/$folder_name"
 meteors_folder="$results_folder/meteors"
 
-
-if [ -d "$target_folder" ]; then
-  echo "Folder already exists: $target_folder "
-  read -n 1 -s -r -p "Press any key to exit"
-  echo
-  exit
-fi
-stack_file_name=""
-
-if [ -d "$meteors_folder" ]; then
-  echo "copy meteors stack to stacks"
-  stack_files=$(find "$meteors_folder" -type f -name "*_meteors.png")
-  if [ -n "$stack_files" ]; then
-    stack_file=${stack_files[0]}
-    stack_file_name=$(basename "$stack_file")
-    if [ ! -f "$stacks_folder/$stack_file_name" ]; then
-      echo "Copy stack file : $stack_file_name"
-      cp "$stack_file" "$stacks_folder"
-    else
-      echo "Stack file $stack_file_name already exists, skip copy"
-    fi
-  fi
-fi
-echo "Move folder to data: $folder_name"
-mv "$results_folder" "$target_folder"
-
-if [ -n "$backup_folder" ]; then
-  echo "Copy files to backup drive"
-  parent_backup_folder="$backup_folder/$year/$month/$station_name"
-  if [ ! -d "$parent_backup_folder" ]; then
-    mkdir -p "$parent_backup_folder"
-  fi
-
-  cp -R "$target_folder" "$backup_folder/$year/$month/$station_name"
-
-  backup_stacks_folder="$backup_folder/$year/$month/$station_name/stacks"
-
-
-  if [ ! -d "$backup_stacks_folder" ]; then
-    mkdir "$backup_stacks_folder"
-  fi
-
-  if [ -n "$stack_file_name" ] && [ ! -f "$backup_stacks_folder/$stack_file_name" ]; then
-    cp "$stacks_folder/$stack_file_name" "$backup_stacks_folder"
-  fi
-fi
+done
 
 
 
