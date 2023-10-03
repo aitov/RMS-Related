@@ -33,7 +33,7 @@ processed_files="$home_folder/pi/RMS_data/ProcessedFiles"
 remote_archive_files="/home/pi/RMS_data/ArchivedFiles"
 remote_captured_files="/home/pi/RMS_data/CapturedFiles"
 
-if [ ! -z "$ssh_host" ]; then
+if [ -n "$ssh_host" ]; then
     ssh_port=22
     # if custom port specified - extract it
     if [[ $ssh_host == *":"* ]]; then

@@ -2,8 +2,9 @@ venv=~/vRMS
 rms_folder=~/source/RMS
 bin_viewer_folder=~/source/cmn_binviewer
 home_folder=/home
-# delimited by ","
+# delimited by "," example: user@host,user@host:port
 ssh_hosts=
 
 data_folder=
 backup_folder=
+rms_related_folder==~/source/RMS-Related
