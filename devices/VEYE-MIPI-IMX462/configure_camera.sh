@@ -26,8 +26,8 @@ sleep 1
 #0x00	Back Light Mode OFF
 ./veye_mipi_i2c.sh -w -f wdrmode -p1 0  # back light mode off
 sleep 1
-#0x0C	NR 2D Mode =HIGH; NR 3D Mode = OFF
-./veye_mipi_i2c.sh -w -f denoise -p1 0xc
+#0x02	NR 2D Mode = OFF; NR 3D Mode = MIDDLE
+./veye_mipi_i2c.sh -w -f denoise -p1 0x02
 sleep 1
 #0xFE	Black&White Mode
 ./veye_mipi_i2c.sh -w -f daynightmode -p1 0xfe	# B&W mode
