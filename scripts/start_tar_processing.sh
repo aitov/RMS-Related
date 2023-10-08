@@ -98,7 +98,7 @@ if [ -e "$missed_fits_files" ] && [ $(wc -c <"$missed_fits_files") -gt 0 ]; then
   # copy from station directly
   if [ ! -z "$ssh_host" ]; then
     while IFS= read -r missed_fit_file; do
-      rsync --progress -e ssh "$ssh_host:$remote_captured_files/$unpack_folder_name/$missed_fit_file" "$archive_files/$unpack_folder_name"
+      rsync --progress -e "ssh -p $ssh_port" "$ssh_host:$remote_captured_files/$unpack_folder_name/$missed_fit_file" "$archive_files/$unpack_folder_name"
     done <"$missed_fits_files"
   else
     # Waiting for manual copy
