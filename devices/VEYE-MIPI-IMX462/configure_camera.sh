@@ -2,9 +2,10 @@
 # Manual: https://wiki.veye.cc/index.php/VEYE-MIPI-290/327_i2c/
 # Forum: https://forum.veye.cc/topic/366/veye-mipi-imx462-manual-gain-not-consistent
 
+. veye_lib_init.sh
 
-cd /home/pi/source/RMS/raspberrypi/i2c_cmd/bin/veye_mipi_i2c.sh -r -f brightness
-chmod 777 *.sh
+cd /home/pi/source/raspberrypi/i2c_cmd/bin
+
 sleep 1
 #PAL	PAL(50Hz)	25fps
 ./veye_mipi_i2c.sh -w -f videoformat -p1 PAL
@@ -25,8 +26,8 @@ sleep 1
 #0x00	Back Light Mode OFF
 ./veye_mipi_i2c.sh -w -f wdrmode -p1 0  # back light mode off
 sleep 1
-#0x0C	NR 2D Mode =HIGH; NR 3D Mode = OFF
-./veye_mipi_i2c.sh -w -f denoise -p1 0xc
+#0x02	NR 2D Mode = OFF; NR 3D Mode = MIDDLE
+./veye_mipi_i2c.sh -w -f denoise -p1 0x02
 sleep 1
 #0xFE	Black&White Mode
 ./veye_mipi_i2c.sh -w -f daynightmode -p1 0xfe	# B&W mode
@@ -39,7 +40,7 @@ sleep 1
 #sleep 1
 #./veye_mipi_i2c.sh -w -f new_mgain -p1 23	# 0.1 - 0.3 # between 20 and 25
 sleep 1
-./veye_mipi_i2c.sh -w -f brightness -p1 0
+./veye_mipi_i2c.sh -w -f brightness -p1 7
 sleep 1
 # special code for sky imaging, to turn automatic bad point correction off
 ./i2c_write 10 0x3b 0x0007 0xFE
@@ -51,10 +52,11 @@ sleep 1
 ./i2c_read 10 0x3b 0x0014 1
 ./veye_mipi_i2c.sh -w -f paramsave
 sleep 1
+# Uncomment if using new_expmode
 # make sure the params are correct
-./veye_mipi_i2c.sh -r -f new_expmode
-./veye_mipi_i2c.sh -r -f new_mgain
-./veye_mipi_i2c.sh -r -f new_mshutter
+#./veye_mipi_i2c.sh -r -f new_expmode
+#./veye_mipi_i2c.sh -r -f new_mgain
+#./veye_mipi_i2c.sh -r -f new_mshutter
 
 
 

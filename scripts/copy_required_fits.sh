@@ -2,7 +2,7 @@
 
 # Copy fits files from missed_fit_files.txt file to selected folder + _missed_fits
 
-echo "Starting bin collecting"
+echo "Starting copy missed fits"
 
 . activate.sh
 

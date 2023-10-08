@@ -126,7 +126,7 @@ find "$source_folder" -type f -name "*.ecsv" -print0 |
     cp "$file" "$rms_results_folder"
   done
 
-find "$source_folder" -type f -name "*.klm" -print0 |
+find "$source_folder" -type f -name "*.kml" -print0 |
   while IFS= read -r -d '' file; do
     cp "$file" "$rms_results_folder"
   done
@@ -135,7 +135,7 @@ platepars_file="$source_folder/platepars_all_recalibrated.json"
 
 if [ -f "$platepars_file" ]; then
   platepars_file_name=$(basename "$platepars_file")
-  zip "$source_folder/${platepars_file_name}.zip" "$platepars_file"
+  zip -j "$source_folder/${platepars_file_name}.zip" "$platepars_file"
   cp "$source_folder/${platepars_file_name}.zip" "$rms_results_folder"
 fi
 source_folder_name=$(basename "$source_folder")

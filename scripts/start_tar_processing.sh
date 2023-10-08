@@ -33,8 +33,15 @@ processed_files="$home_folder/pi/RMS_data/ProcessedFiles"
 remote_archive_files="/home/pi/RMS_data/ArchivedFiles"
 remote_captured_files="/home/pi/RMS_data/CapturedFiles"
 
-if [ ! -z "$ssh_host" ]; then
-    tar_files=($(ssh "$ssh_host" "cd $remote_archive_files && ls -t *.tar.bz2"))
+if [ -n "$ssh_host" ]; then
+    ssh_port=22
+    # if custom port specified - extract it
+    if [[ $ssh_host == *":"* ]]; then
+      ssh_port=${ssh_host#*":"}
+      ssh_host=${ssh_host%":$ssh_port"}
+    fi
+
+    tar_files=($(ssh "$ssh_host" -p "$ssh_port" "cd $remote_archive_files && ls -t *.tar.bz2"))
     tar_files_string=$(printf ",\"%s\"" "${tar_files[@]}")
     tar_files_string=${tar_files_string:1}
 
@@ -45,7 +52,7 @@ if [ ! -z "$ssh_host" ]; then
       read -n 1 -s -r -p "Press any key to continue"
       echo
     else
-      rsync --progress -e ssh "$ssh_host:$remote_archive_files/$tar_file_name" "$archive_files"
+      rsync --progress -e "ssh -p $ssh_port" "$ssh_host:$remote_archive_files/$tar_file_name "  "$archive_files"
       tar_file="$archive_files/$tar_file_name"
     fi
 
@@ -91,7 +98,7 @@ if [ -e "$missed_fits_files" ] && [ $(wc -c <"$missed_fits_files") -gt 0 ]; then
   # copy from station directly
   if [ ! -z "$ssh_host" ]; then
     while IFS= read -r missed_fit_file; do
-      rsync --progress -e ssh "$ssh_host:$remote_captured_files/$unpack_folder_name/$missed_fit_file" "$archive_files/$unpack_folder_name"
+      rsync --progress -e "ssh -p $ssh_port" "$ssh_host:$remote_captured_files/$unpack_folder_name/$missed_fit_file" "$archive_files/$unpack_folder_name"
     done <"$missed_fits_files"
   else
     # Waiting for manual copy

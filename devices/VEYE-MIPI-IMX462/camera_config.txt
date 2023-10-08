@@ -1,0 +1,35 @@
+r Video Format is PAL(50Hz)
+r agc is 0x0c
+r ircutdir is 0xff
+r mshutter is 0x40
+r cameramode is 0x 0
+r nodf is 0x 0
+r csienable is 0x 0
+r agcspeed is 0x a shutter speed is 0x50
+r contrast is 0x80
+r saturation is 0x28
+r wdrtargetbr is 0x80
+r wdrbtargetbr is 0x30
+r awb Rgain is 0x5d Bgain is 0x59
+r awb mode is 0x18 
+r mwb Rgain is 0x7b Bgain is 0x74 
+r YUVseq is UYVY
+r sharppen enable is 0x 0 val is 0x 0
+r irtrigger is 0xfe
+r lowlight is 0x 0
+r wdrmode is 0x 0
+r denoise is 0x 2
+r daynightmode is 0xfe
+r new expmode is auto, use old mshutter and auto gain
+r Video Format is PAL(50Hz)
+r new mshutter is 39982
+gain step 0.3dB
+r new mgain 22.8 dB
+Video Format is PAL(50Hz)
+r brightness is 0x 7
+r Video Format is PAL(50Hz)
+r max_shutter is 40000 us
+Using i2C device /dev/i2c-10
+====I2C read:<0x3b> <0x14> <0x1>====
+Read i2c addr 3B
+addr 0014 : value ca 

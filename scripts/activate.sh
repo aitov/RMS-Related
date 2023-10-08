@@ -8,6 +8,7 @@ venv=~/vRMS
 rms_folder=~/source/RMS
 bin_viewer_folder=~/source/cmn_binviewer
 home_folder=/home
+rms_related_folder=~/source/RMS-Related
 
 if [ -e "local.properties" ]; then
   source "local.properties"
