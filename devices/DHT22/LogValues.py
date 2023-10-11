@@ -9,8 +9,8 @@ from board import D10
 dht_device = adafruit_dht.DHT22(D10, use_pulseio=False)
 
 # check temperature and save once in 5 minutes
-# timeout = 60 * 5
-timeout = 5
+timeout = 60 * 5
+
 csvFolder = "/home/pi/log"
 #  RMS should restart Raspberry every day, it should force create new file in next month
 csvFile = time.strftime("%m.%Y") + "_outside_sensor_values.csv"
