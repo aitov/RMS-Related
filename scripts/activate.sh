@@ -25,10 +25,8 @@ create_folder() {
     exit
   fi
 
-  folder_name="$1"
-
-  if [ ! -d "$folder_name" ]; then
-    mkdir -p "$folder_name"
+  if [ ! -d "$1" ]; then
+    mkdir -p "$1"
   fi
 }
 
@@ -40,10 +38,8 @@ delete_folder() {
       exit
   fi
 
-  folder_name="$1"
-
-  if [ -d "$folder_name" ]; then
-    rm -r "$folder_name"
+  if [ -d "$1" ]; then
+    rm -r "$1"
   fi
 }
 
@@ -56,9 +52,7 @@ delete_file() {
       exit
   fi
 
-  file_name="$1"
-
-  if [ -f "$file_name" ]; then
-    rm "$file_name"
+  if [ -f "$1" ]; then
+    rm "$1"
   fi
 }

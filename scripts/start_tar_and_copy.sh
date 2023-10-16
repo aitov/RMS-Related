@@ -40,15 +40,11 @@ for ssh_host in "${ssh_hosts_list[@]}"; do
           echo "csv file is empty: skipping, file: $csv_file"
         else
           csv_folder="$csv_shared_folder/$year"
-          if [ ! -d "$csv_folder" ]; then
-              mkdir -p "$csv_folder"
-          fi
+          create_folder "$csv_folder"
           cp "$csv_file" "$csv_folder"
           # merge all csv to one monthly folder
           monthly_folder="$csv_folder/monthly/$month"
-          if [ ! -d "$monthly_folder" ]; then
-             mkdir -p "$monthly_folder"
-          fi
+          create_folder "$monthly_folder"
           awk '(NR == 1) || (FNR > 1)' $csv_folder/${station_name}_${year}${month}*.csv > "$monthly_folder/${year}_${month}_${station_name}.csv"
         fi
       fi
@@ -56,14 +52,10 @@ for ssh_host in "${ssh_hosts_list[@]}"; do
   fi
 
   parent_target_folder="$data_folder/$year/$month/$station_name"
-  if [ ! -d "$parent_target_folder" ]; then
-    mkdir -p "$parent_target_folder"
-  fi
+  create_folder "$parent_target_folder"
 
   stacks_folder="$data_folder/$year/$month/$station_name/stacks"
-  if [ ! -d "$stacks_folder" ]; then
-    mkdir "$stacks_folder"
-  fi
+  create_folder "$stacks_folder"
 
   target_folder="$parent_target_folder/$folder_name"
   meteors_folder="$results_folder/meteors"
@@ -97,25 +89,36 @@ for ssh_host in "${ssh_hosts_list[@]}"; do
   if [ -n "$backup_folder" ]; then
     echo "Copy files to backup drive"
     parent_backup_folder="$backup_folder/$year/$month/$station_name"
-    if [ ! -d "$parent_backup_folder" ]; then
-      mkdir -p "$parent_backup_folder"
-    fi
+    create_folder "$parent_backup_folder"
 
     cp -R "$target_folder" "$backup_folder/$year/$month/$station_name"
 
     backup_stacks_folder="$backup_folder/$year/$month/$station_name/stacks"
 
-
-    if [ ! -d "$backup_stacks_folder" ]; then
-      mkdir "$backup_stacks_folder"
-    fi
+    create_folder "$backup_stacks_folder"
 
     if [ -n "$stack_file_name" ] && [ ! -f "$backup_stacks_folder/$stack_file_name" ]; then
       cp "$stacks_folder/$stack_file_name" "$backup_stacks_folder"
     fi
   fi
 
+  if [ -n "$logs_folder" ]; then
+     # if custom port specified - extract it
+     ssh_port=22
+     if [[ $ssh_host == *":"* ]]; then
+           ssh_port=${ssh_host#*":"}
+           ssh_host=${ssh_host%":$ssh_port"}
+     fi
+     if ssh "$ssh_host" -p "$ssh_port" "[ -d ${logs_folder} ]"; then
+        result_log_folder="$data_folder/log"
+        echo "$result_log_folder"
+        create_folder "$result_log_folder"
+        rsync -r -e "ssh -p $ssh_port" "$ssh_host:$logs_folder" "$data_folder"
+        if [ -n "$backup_folder" ]; then
+          create_folder "$backup_folder/log"
+          cp -r "$result_log_folder" "$backup_folder"
+        fi
+     fi
+  fi
+
 done
-
-
-
