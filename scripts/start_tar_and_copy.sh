@@ -22,10 +22,38 @@ for ssh_host in "${ssh_hosts_list[@]}"; do
     exit
   fi
 
-
   station_name=${folder_name:0:6}
   year=${folder_name:7:4}
   month=${folder_name:11:2}
+
+
+  if [ -n "$csv_shared_folder" ]; then
+    if [ ! -d "$csv_shared_folder" ]; then
+      echo "Specified csv shared folder doesn't exist : $csv_shared_folder"
+      echo "Copy skipped"
+    else
+      csv_file="$results_folder/rms/${folder_name}.csv"
+      if [ -e "$csv_file" ]; then
+        # skip empty (only with header) csv files
+        file_size=$(wc -c "$csv_file" | awk '{print $1}')
+        if [ $file_size -lt 100 ]; then
+          echo "csv file is empty: skipping, file: $csv_file"
+        else
+          csv_folder="$csv_shared_folder/$year"
+          if [ ! -d "$csv_folder" ]; then
+              mkdir -p "$csv_folder"
+          fi
+          cp "$csv_file" "$csv_folder"
+          # merge all csv to one monthly folder
+          monthly_folder="$csv_folder/monthly/$month"
+          if [ ! -d "$monthly_folder" ]; then
+             mkdir -p "$monthly_folder"
+          fi
+          awk '(NR == 1) || (FNR > 1)' $csv_folder/${station_name}_${year}${month}*.csv > "$monthly_folder/${year}_${month}_${station_name}.csv"
+        fi
+      fi
+    fi
+  fi
 
   parent_target_folder="$data_folder/$year/$month/$station_name"
   if [ ! -d "$parent_target_folder" ]; then

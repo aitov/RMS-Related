@@ -2,9 +2,12 @@ venv=~/vRMS
 rms_folder=~/source/RMS
 bin_viewer_folder=~/source/cmn_binviewer
 home_folder=/home
-# delimited by "," example: user@host,user@host:port
+# delimited by "," example: user@host,user@host:port (used by start_tar_and_copy.sh script)
 ssh_hosts=
+# if need use start_tar_processing.sh should be specified single station
+# ssh_host=
 
 data_folder=
 backup_folder=
+csv_shared_folder=
 rms_related_folder==~/source/RMS-Related

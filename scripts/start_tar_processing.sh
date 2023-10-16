@@ -71,9 +71,7 @@ fi
 
 unpack_folder=${tar_file%"_detected.tar.bz2"}
 
-if [ ! -d "$unpack_folder" ]; then
-  mkdir "$unpack_folder"
-fi
+create_folder "$unpack_folder"
 
 echo "Unpack tar : $tar_file to folder: $unpack_folder"
 tar -xvf "$tar_file" -C "$unpack_folder" || exit
@@ -81,6 +79,7 @@ tar -xvf "$tar_file" -C "$unpack_folder" || exit
 unpack_folder_name=$(basename "$unpack_folder")
 parent_dir="$(dirname "$unpack_folder")"
 missed_fits_files="$parent_dir/${unpack_folder_name}_missed_fits.txt"
+missed_fits_folder="$parent_dir/${unpack_folder_name}_missed_fits"
 rm -f "$missed_fits_files"
 
 find "$unpack_folder" -type f -name "FR_*.bin" -print0 |
@@ -95,10 +94,14 @@ find "$unpack_folder" -type f -name "FR_*.bin" -print0 |
   done
 
 if [ -e "$missed_fits_files" ] && [ $(wc -c <"$missed_fits_files") -gt 0 ]; then
-  # copy from station directly
-  if [ ! -z "$ssh_host" ]; then
+  missed_folder="$archive_files/$unpack_folder_name/missed_fits"
+  create_folder "$missed_folder"
+  # copy from station directly and move to missed_fits folder
+  if [ -n "$ssh_host" ]; then
     while IFS= read -r missed_fit_file; do
-      rsync --progress -e "ssh -p $ssh_port" "$ssh_host:$remote_captured_files/$unpack_folder_name/$missed_fit_file" "$archive_files/$unpack_folder_name"
+      rsync --progress -e "ssh -p $ssh_port" "$ssh_host:$remote_captured_files/$unpack_folder_name/$missed_fit_file" "$missed_folder"
+      fit_file_without_ext="$(echo "$missed_fit_file" | cut -f 1 -d '.')"
+      mv "$archive_files/$unpack_folder_name/FR${fit_file_without_ext:2}.bin" "$missed_folder"
     done <"$missed_fits_files"
   else
     # Waiting for manual copy
@@ -106,7 +109,6 @@ if [ -e "$missed_fits_files" ] && [ $(wc -c <"$missed_fits_files") -gt 0 ]; then
     open -e "$missed_fits_files"
     read -n 1 -s -r -p "Press any key to continue"
     echo
-    missed_fits_folder="$parent_dir/${unpack_folder_name}_missed_fits"
     if [ ! -d "$missed_fits_folder" ]; then
       echo "Missed fits folder not found: $missed_fits_folder"
       read -r -p "Do you want continue without missed fits? (y/n) " yn
@@ -128,7 +130,9 @@ if [ -e "$missed_fits_files" ] && [ $(wc -c <"$missed_fits_files") -gt 0 ]; then
           missed_files+=(" $missed_fit_file")
         else
           echo "Copy missed fits file: $missed_fit_file"
-          cp "$missed_fits_folder/$missed_fit_file" "$unpack_folder"
+          cp "$missed_fits_folder/$missed_fit_file" "$missed_folder"
+          fit_file_without_ext="$(echo "$missed_fit_file" | cut -f 1 -d '.')"
+          mv "$archive_files/$unpack_folder_name/FR${fit_file_without_ext:2}.bin" "$missed_folder"
         fi
       done <"$missed_fits_files"
     fi
@@ -151,15 +155,11 @@ if [ ${#missed_files[@]} -gt 0 ]; then
   esac
 fi
 
-if [ ! -d "$processed_files" ]; then
-  mkdir "$processed_files"
-fi
+create_folder "$processed_files"
 
 results_folder="$processed_files/$unpack_folder_name"
 
-if [ ! -d "$results_folder" ]; then
-  mkdir "$results_folder"
-fi
+create_folder "$results_folder"
 
 current_dir=$(pwd)
 
@@ -168,14 +168,13 @@ current_dir=$(pwd)
 cd "$current_dir"
 
 . photo_processing.sh "$unpack_folder" "$results_folder"
-if [ -d "${unpack_folder}" ]; then
-  rm -r "$unpack_folder"
-fi
 
-if [ -d "${results_folder}_sky_fit" ]; then
-  rm -r "${results_folder}_sky_fit"
-fi
-rm "$tar_file"
+# cleanup files and folders
+delete_folder "$unpack_folder"
+delete_folder "${results_folder}_sky_fit"
+delete_folder "$missed_fits_folder"
+delete_file "$missed_fits_files"
+delete_file "$tar_file"
 
 read -n 1 -s -r -p "Press any key to exit"
 echo
