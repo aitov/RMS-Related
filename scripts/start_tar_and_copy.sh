@@ -26,7 +26,6 @@ for ssh_host in "${ssh_hosts_list[@]}"; do
   year=${folder_name:7:4}
   month=${folder_name:11:2}
 
-
   if [ -n "$csv_shared_folder" ]; then
     if [ ! -d "$csv_shared_folder" ]; then
       echo "Specified csv shared folder doesn't exist : $csv_shared_folder"

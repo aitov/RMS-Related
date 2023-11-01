@@ -2,7 +2,9 @@
 #  Log values of DHT22 sensor to csv file for statistic collection
 #
 
+
 import adafruit_dht, time, os, subprocess
+
 # Need specify pin where DHT22 connected
 from board import D10
 
@@ -34,6 +36,7 @@ while running:
         # read the humidity and temperature
         temperature = dht_device.temperature
         humidity = dht_device.humidity
+
         # get CPU temp
         cpu_temperature = subprocess.check_output(["/opt/vc/bin/vcgencmd measure_temp | cut -c6-9"], shell=True, encoding="utf-8").strip()
 
@@ -53,4 +56,3 @@ while running:
         print('Program stopped')
         running = False
         file.close()
-

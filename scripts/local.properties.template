@@ -6,7 +6,6 @@ home_folder=/home
 ssh_hosts=
 # if need use start_tar_processing.sh should be specified single station
 # ssh_host=
-
 data_folder=
 backup_folder=
 csv_shared_folder=
