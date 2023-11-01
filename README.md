@@ -41,4 +41,22 @@ Manual: https://wiki.veye.cc/index.php/VEYE-MIPI-290/327_i2c/
 
 Forum: https://forum.veye.cc/topic/366/veye-mipi-imx462-manual-gain-not-consistent
 
-Configuration script: scripts/veye_configure.sh
+Download config util script:
+```
+devices/VEYE-MIPI-IMX462/veye_lib_init.sh
+```
+
+Read camera current config script:
+```
+devices/VEYE-MIPI-IMX462/read_camera_config.sh
+```
+
+My camera config
+```
+devices/VEYE-MIPI-IMX462/camera_config.txt
+```
+
+Set to camera my config script:
+```
+devices/VEYE-MIPI-IMX462/configure_camera.sh
+```
