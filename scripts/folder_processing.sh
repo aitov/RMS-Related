@@ -35,7 +35,7 @@ fi
 cd "$rms_folder" || exit
 
 echo "Using source folder : $source_folder"
-
+missed_fits="$source_folder/missed_fits"
 bin_files=$(find "$source_folder" -type f -name "FR_*.bin")
 if [ -z "$bin_files" ]; then
   echo "No bin files found, skipping processing"
@@ -43,19 +43,24 @@ if [ -z "$bin_files" ]; then
   echo
 else
   echo "Generating mp4 for bins in : $source_folder"
-  python -m Utils.FRbinViewer -a -f mp4 -c "$source_folder/.config" "$source_folder"
   # todo add -t when timestamp will be fixed
-  #python -m Utils.FRbinViewer -a -t -f mp4 -c "$source_folder/.config" "$source_folder"
+#  python -m Utils.FRbinViewer -a -t -f mp4 -c "$source_folder/.config" "$source_folder"
+  python -m Utils.FRbinViewer -a -f mp4 -c "$source_folder/.config" "$source_folder"
+  if [ -d "$missed_fits" ]; then
+    create_folder "$results_folder/missed_fits"
+    echo "Generating mp4 for bins in : $missed_fits"
+    python -m Utils.FRbinViewer -a -f mp4 -c "$source_folder/.config" "$missed_fits"
+#    python -m Utils.FRbinViewer -a -t -f mp4 -c "$source_folder/.config" "$missed_fits"
+  fi
 
   sky_fit_folder="${results_folder}_sky_fit"
 
-  if [ ! -d "$sky_fit_folder" ]; then
-    mkdir "$sky_fit_folder"
-  fi
+  create_folder "$sky_fit_folder"
 
   echo "Copy bins with fits sky fit folder: $sky_fit_folder"
   find "$source_folder" -type f -name "FR_*.bin" -print0 |
     while IFS= read -r -d '' bin_file; do
+      parent_dir="$(dirname "$bin_file")"
       bin_file_name=$(basename "$bin_file")
       echo "Copy bin file: $bin_file_name"
       cp "$bin_file" "$sky_fit_folder"
@@ -63,9 +68,14 @@ else
       fit_file_name="FF${fit_file_base:2}.fits"
       mp4_file_name="${fit_file_base}_line_00.mp4"
       echo "Copy fits file: $fit_file_name"
-      cp "$source_folder/$fit_file_name" "$sky_fit_folder"
+      cp "$parent_dir/$fit_file_name" "$sky_fit_folder"
       echo "Copy mp4 file: $mp4_file_name"
-      cp "$source_folder/$mp4_file_name" "$results_folder"
+      if [ "$parent_dir" = "$missed_fits" ]; then
+        cp "$parent_dir/$mp4_file_name" "$results_folder/missed_fits"
+      else
+        cp "$parent_dir/$mp4_file_name" "$results_folder"
+      fi
+
     done
   cp "$source_folder/.config" "$sky_fit_folder"
   cp "$source_folder/platepar_cmn2010.cal" "$sky_fit_folder"
@@ -97,9 +107,7 @@ fi
 
 rms_results_folder="${results_folder}/rms"
 
-if [ ! -d "$rms_results_folder" ]; then
-  mkdir "$rms_results_folder"
-fi
+create_folder "$rms_results_folder"
 
 find "$source_folder" -type f -name "FTPdetectinfo_*.txt" -print0 |
   while IFS= read -r -d '' file; do

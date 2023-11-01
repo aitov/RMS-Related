@@ -15,3 +15,44 @@ if [ -e "local.properties" ]; then
 fi
 
 source "$venv/bin/activate"
+
+create_folder() {
+
+  if [ -z "$1" ]; then
+    echo "Please specify folder name"
+    read -n 1 -s -r -p "Press any key to exit"
+    echo
+    exit
+  fi
+
+  if [ ! -d "$1" ]; then
+    mkdir -p "$1"
+  fi
+}
+
+delete_folder() {
+   if [ -z "$1" ]; then
+      echo "Please specify folder name"
+      read -n 1 -s -r -p "Press any key to exit"
+      echo
+      exit
+  fi
+
+  if [ -d "$1" ]; then
+    rm -r "$1"
+  fi
+}
+
+
+delete_file() {
+   if [ -z "$1" ]; then
+      echo "Please specify file name"
+      read -n 1 -s -r -p "Press any key to exit"
+      echo
+      exit
+  fi
+
+  if [ -f "$1" ]; then
+    rm "$1"
+  fi
+}

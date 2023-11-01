@@ -22,20 +22,39 @@ for ssh_host in "${ssh_hosts_list[@]}"; do
     exit
   fi
 
-
   station_name=${folder_name:0:6}
   year=${folder_name:7:4}
   month=${folder_name:11:2}
 
-  parent_target_folder="$data_folder/$year/$month/$station_name"
-  if [ ! -d "$parent_target_folder" ]; then
-    mkdir -p "$parent_target_folder"
+  if [ -n "$csv_shared_folder" ]; then
+    if [ ! -d "$csv_shared_folder" ]; then
+      echo "Specified csv shared folder doesn't exist : $csv_shared_folder"
+      echo "Copy skipped"
+    else
+      csv_file="$results_folder/rms/${folder_name}.csv"
+      if [ -e "$csv_file" ]; then
+        # skip empty (only with header) csv files
+        file_size=$(wc -c "$csv_file" | awk '{print $1}')
+        if [ $file_size -lt 100 ]; then
+          echo "csv file is empty: skipping, file: $csv_file"
+        else
+          csv_folder="$csv_shared_folder/$year"
+          create_folder "$csv_folder"
+          cp "$csv_file" "$csv_folder"
+          # merge all csv to one monthly folder
+          monthly_folder="$csv_folder/monthly/$month"
+          create_folder "$monthly_folder"
+          awk '(NR == 1) || (FNR > 1)' $csv_folder/${station_name}_${year}${month}*.csv > "$monthly_folder/${year}_${month}_${station_name}.csv"
+        fi
+      fi
+    fi
   fi
 
+  parent_target_folder="$data_folder/$year/$month/$station_name"
+  create_folder "$parent_target_folder"
+
   stacks_folder="$data_folder/$year/$month/$station_name/stacks"
-  if [ ! -d "$stacks_folder" ]; then
-    mkdir "$stacks_folder"
-  fi
+  create_folder "$stacks_folder"
 
   target_folder="$parent_target_folder/$folder_name"
   meteors_folder="$results_folder/meteors"
@@ -69,25 +88,30 @@ for ssh_host in "${ssh_hosts_list[@]}"; do
   if [ -n "$backup_folder" ]; then
     echo "Copy files to backup drive"
     parent_backup_folder="$backup_folder/$year/$month/$station_name"
-    if [ ! -d "$parent_backup_folder" ]; then
-      mkdir -p "$parent_backup_folder"
-    fi
+    create_folder "$parent_backup_folder"
 
     cp -R "$target_folder" "$backup_folder/$year/$month/$station_name"
 
     backup_stacks_folder="$backup_folder/$year/$month/$station_name/stacks"
 
-
-    if [ ! -d "$backup_stacks_folder" ]; then
-      mkdir "$backup_stacks_folder"
-    fi
+    create_folder "$backup_stacks_folder"
 
     if [ -n "$stack_file_name" ] && [ ! -f "$backup_stacks_folder/$stack_file_name" ]; then
       cp "$stacks_folder/$stack_file_name" "$backup_stacks_folder"
     fi
   fi
 
+  if [ -n "$logs_folder" ]; then
+     if ssh "$ssh_host" -p "$ssh_port" "[ -d ${logs_folder} ]"; then
+        result_log_folder="$data_folder/log"
+        echo "$result_log_folder"
+        create_folder "$result_log_folder"
+        rsync -r -e "ssh -p $ssh_port" "$ssh_host:$logs_folder" "$data_folder"
+        if [ -n "$backup_folder" ]; then
+          create_folder "$backup_folder/log"
+          cp -r "$result_log_folder" "$backup_folder"
+        fi
+     fi
+  fi
+
 done
-
-
-
