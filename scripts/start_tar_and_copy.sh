@@ -103,12 +103,6 @@ for ssh_host in "${ssh_hosts_list[@]}"; do
   fi
 
   if [ -n "$logs_folder" ]; then
-     # if custom port specified - extract it
-     ssh_port=22
-     if [[ $ssh_host == *":"* ]]; then
-           ssh_port=${ssh_host#*":"}
-           ssh_host=${ssh_host%":$ssh_port"}
-     fi
      if ssh "$ssh_host" -p "$ssh_port" "[ -d ${logs_folder} ]"; then
         result_log_folder="$data_folder/log"
         echo "$result_log_folder"
