@@ -2,6 +2,8 @@ from RMS.Formats.FTPdetectinfo import readFTPdetectinfo, findFTPdetectinfoFile
 import RMS.Formats.FFfile as file
 from RMS.Routines.CustomPyqtgraphClasses import *
 import pyqtgraph as pg
+from PyQt5.QtCore import *
+import os, datetime
 
 
 class RmsProcessing(QtWidgets.QMainWindow):
@@ -11,63 +13,68 @@ class RmsProcessing(QtWidgets.QMainWindow):
         self.setupUI()
 
     def setupUI(self):
-        self.central = QtWidgets.QWidget()
+        vbox = QtWidgets.QVBoxLayout()
+        central = QtWidgets.QWidget()
+        central.setLayout(vbox)
 
 
-        layout = QtWidgets.QGridLayout()
-        self.scroll = QtWidgets.QScrollArea()
+        scroll = QtWidgets.QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(central)
+        self.setCentralWidget(scroll)
 
-        self.setCentralWidget(self.scroll)
-
-        # Init the central image window
-
-
-
-        # self.viewWidget.setCentralWidget(self.imgFrame)
-
-
-        # layout.addWidget(self.scroll, 0, 1)
-
-        # Add main image
         data = MeteorData()
         detectedMeteors = data.readDetectedMeteors()
-        vbox = QtWidgets.QVBoxLayout()
 
+        # vbox.setAlignment(Qt.AlignRight)
         for image in detectedMeteors:
-            viewWidget = pg.GraphicsView()
-            imgFrame = ViewBox()
-            viewWidget.setFixedHeight(720)
-            viewWidget.setFixedWidth(1280)
-            imgFrame.invertY()
-            imgFrame.setAspectLocked()
-            imgFrame.setMouseEnabled(False, False)
-            imgFrame.setMenuEnabled(False)
-            img = pg.ImageItem(self.loadImage(image))
-            imgFrame.addItem(img, False)
-            imgFrame.autoRange(padding=0)
-            viewWidget.setCentralWidget(imgFrame)
-            vbox.addWidget(viewWidget)
-        self.central.setLayout(vbox)
-        self.scroll.setWidget(self.central)
-
+           self.addImage(image, vbox)
 
         self.setMinimumSize(1280, 720)
         self.showMaximized()
-
         self.show()
 
     def loadImage(self, imageName):
 
 
-       # folder_path = "/Users/alexaitov/home/pi/RMS_data/ArchivedFiles/UA0003_20231023_152622_865748"
-       folder_path = "/Users/alexaitov/home/pi/RMS_data/ArchivedFiles/UA0004_20231109_145806_373961"
+       folder_path = "/Users/alexaitov/home/pi/RMS_data/ArchivedFiles/UA0003_20231023_152622_865748"
+       # folder_path = "/Users/alexaitov/home/pi/RMS_data/ArchivedFiles/UA0004_20231109_145806_373961"
 
        return np.swapaxes(file.read(folder_path, imageName).maxpixel, 0, 1)
 
+    def addImage(self, imageName, layout):
+        viewWidget = pg.GraphicsView()
+        viewWidget.setFixedHeight(720)
+        viewWidget.setFixedWidth(1280)
+        imgFrame = ViewBox()
+        imgFrame.invertY()
+        imgFrame.setMouseEnabled(False, False)
+        img = pg.ImageItem(self.loadImage(imageName))
+        imgFrame.addItem(img, False)
+        imgFrame.autoRange(padding=0)
+        viewWidget.setCentralWidget(imgFrame)
+        label = pg.TextItem(color=(255, 255, 255))
+        label.setFont(QtGui.QFont('monospace', 8))
+        label.setTextWidth(200)
+        label.setZValue(1000)
+        label.setText(self.getTimestampTitle(imageName))
+        label.setParentItem(imgFrame)
+        label.setPos(0, 720 - label.boundingRect().height())
+        layout.addWidget(viewWidget, alignment=Qt.AlignCenter)
+
+
+    def getTimestampTitle(self, fr_path):
+        _, fname = os.path.split(fr_path)
+        splits = fname.split('_')
+        dtstr = splits[2] + '_' + splits[3] + '.' + splits[4]
+        imgdt = datetime.datetime.strptime(dtstr, '%Y%m%d_%H%M%S.%f')
+        return splits[1] + ' ' + imgdt.strftime('%Y-%m-%d %H:%M:%S UTC')
+
+
 class MeteorData(object):
      def readDetectedMeteors(self):
-        # folder_path = "/Users/alexaitov/home/pi/RMS_data/ArchivedFiles/UA0003_20231023_152622_865748"
-        folder_path = "/Users/alexaitov/home/pi/RMS_data/ArchivedFiles/UA0004_20231109_145806_373961"
+        folder_path = "/Users/alexaitov/home/pi/RMS_data/ArchivedFiles/UA0003_20231023_152622_865748"
+        # folder_path = "/Users/alexaitov/home/pi/RMS_data/ArchivedFiles/UA0004_20231109_145806_373961"
         ftp_detect_file = findFTPdetectinfoFile(folder_path)
         meteor_list = readFTPdetectinfo(folder_path, ftp_detect_file)
         return self.getDetectedMeteors(meteor_list)
