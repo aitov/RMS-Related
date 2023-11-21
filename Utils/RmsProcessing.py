@@ -16,6 +16,7 @@ class RmsProcessing(QtWidgets.QMainWindow):
         self.setupUI()
 
     def setupUI(self):
+        self.initMenuAndStatusBar()
         vbox = QtWidgets.QVBoxLayout()
         central = QtWidgets.QWidget()
         central.setLayout(vbox)
@@ -27,14 +28,30 @@ class RmsProcessing(QtWidgets.QMainWindow):
 
         data = MeteorData()
         detectedMeteors = data.readDetectedMeteors()
-
+        self.detectedCount = len(detectedMeteors)
+        self.detectedTotal = self.detectedCount
         # vbox.setAlignment(Qt.AlignRight)
         for meteorData in detectedMeteors:
             self.addImage(meteorData, vbox)
-
-        self.setMinimumSize(1280, 720)
+        self.updateStatus()
+        self.setMinimumSize(1450, 800)
         self.showMaximized()
         self.show()
+
+    def initMenuAndStatusBar(self):
+
+        menuBar = self.menuBar()
+        # menuBar.setNativeMenuBar(False)
+        fileMenu = menuBar.addMenu("File")
+        fileMenu.addAction("Open")
+        fileMenu.addAction("Save")
+        menuBar.show()
+        self.statusBar = QtWidgets.QStatusBar()
+        finishButton = QtWidgets.QPushButton("Finish Detection")
+        finishButton.clicked.connect(self.onFinishDetectonClick)
+        self.statusBar.addPermanentWidget(finishButton)
+        self.setStatusBar(self.statusBar)
+
 
     def loadImage(self, imageName):
         folder_path = "/Users/alexaitov/home/pi/RMS_data/ArchivedFiles/UA0003_20231023_152622_865748"
@@ -84,7 +101,7 @@ class RmsProcessing(QtWidgets.QMainWindow):
         detectedCheckBox.setChecked(detected)
         detectedCheckBox.meteorId = meteorData.fileName + "_" + str(meteorData.meteorNumber)
         self.detectedCheckBoxes[detectedCheckBox.meteorId] = detectedCheckBox
-        detectedCheckBox.toggled.connect(self.onDetectedClicked)
+        detectedCheckBox.toggled.connect(self.onDetectedClick)
         verticalLayout.addWidget(detectedCheckBox)
 
         addToStackCheckBox = QtWidgets.QCheckBox("Add to stack")
@@ -102,9 +119,21 @@ class RmsProcessing(QtWidgets.QMainWindow):
         imgdt = datetime.datetime.strptime(dtstr, '%Y%m%d_%H%M%S.%f')
         return splits[1] + ' ' + imgdt.strftime('%Y-%m-%d %H:%M:%S UTC')
 
-    def onDetectedClicked(self):
+    def onDetectedClick(self):
         detectedCheckBox = self.sender()
+        if detectedCheckBox.isChecked():
+            self.detectedCount += 1
+        else:
+            self.detectedCount -= 1
         self.toStackCheckBoxes[detectedCheckBox.meteorId].setChecked(detectedCheckBox.isChecked())
+        self.updateStatus()
+
+
+    def onFinishDetectonClick(self):
+        self.close()
+
+    def updateStatus(self):
+        self.statusBar.showMessage("Detected meteors: {}/{}".format(self.detectedCount, self.detectedTotal))
 
 class MeteorData(object):
     def __init__(self, fileName=None, meteorNumber=None):

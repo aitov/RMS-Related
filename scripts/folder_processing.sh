@@ -113,6 +113,11 @@ find "$source_folder" -type f -name "FTPdetectinfo_*.txt" -print0 |
     cp "$file" "$rms_results_folder"
   done
 
+find "$source_folder" -type f -name "*_radiants.txt" -print0 |
+  while IFS= read -r -d '' file; do
+    cp "$file" "$rms_results_folder"
+  done
+
 find "$source_folder" -type f -name "*.png" -print0 |
   while IFS= read -r -d '' file; do
     cp "$file" "$rms_results_folder"
