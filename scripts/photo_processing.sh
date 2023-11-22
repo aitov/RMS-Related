@@ -74,9 +74,7 @@ find "$source_folder" -type f -name "*_meteors.png" -print0 |
 
 find "$source_folder" -type f -name "*.csv" -print0 |
   while IFS= read -r -d '' file; do
+    cp "$file" "$results_folder"
     cp "$file" "$results_folder/rms"
   done
-
-
-
 

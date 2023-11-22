@@ -28,13 +28,33 @@ if clock synchronised and NPT service inactive like:
 System clock synchronized: yes
 NTP service: inactive
 ``` 
-it means ntp lib installed and used ntpd service instead, if you want use embedded service - uninstall ntp 
+it means ntp or chrony lib installed and used this service instead, if you want use embedded service - uninstall ntp 
 
 and also in case of manual time set, it could be enabled by command: 
 ```Shell
 sudo timedatectl set-ntp on
 ```
-  
+
+If still inactive try check status
+```Shell
+systemctl status systemd-timesyncd.service
+```
+
+it could be reason like :
+```
+└─ ConditionFileIsExecutable=!/usr/sbin/chronyd was not met
+```  
+
+In this case you need remove chrony 
+```Shell
+sudo apt-get remove -y chrony
+```
+
+and repeat command
+```Shell
+sudo timedatectl set-ntp on
+```
+
 
 ###Useful  commands for checking rtc after connection to Pi
 

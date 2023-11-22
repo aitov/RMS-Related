@@ -47,9 +47,14 @@ else
   python -m Utils.FRbinViewer -a -t -f mp4 -c "$source_folder/.config" "$source_folder"
 
   if [ -d "$missed_fits" ]; then
-    create_folder "$results_folder/missed_fits"
-    echo "Generating mp4 for bins in : $missed_fits"
-    python -m Utils.FRbinViewer -a -t -f mp4 -c "$source_folder/.config" "$missed_fits"
+    fits_files=$(find "$missed_fits" -type f -name "FF_*.fits")
+    if [ -z "$fits_files" ]; then
+      echo "No fits files found, skipping processing"
+    else
+      create_folder "$results_folder/missed_fits"
+      echo "Generating mp4 for bins in : $missed_fits"
+      python -m Utils.FRbinViewer -a -t -f mp4 -c "$source_folder/.config" "$missed_fits"
+    fi
   fi
 
   sky_fit_folder="${results_folder}_sky_fit"
@@ -66,15 +71,18 @@ else
       fit_file_base="$(echo "$bin_file_name" | cut -f 1 -d '.')"
       fit_file_name="FF${fit_file_base:2}.fits"
       mp4_file_name="${fit_file_base}_line_00.mp4"
-      echo "Copy fits file: $fit_file_name"
-      cp "$parent_dir/$fit_file_name" "$sky_fit_folder"
-      echo "Copy mp4 file: $mp4_file_name"
-      if [ "$parent_dir" = "$missed_fits" ]; then
-        cp "$parent_dir/$mp4_file_name" "$results_folder/missed_fits"
-      else
-        cp "$parent_dir/$mp4_file_name" "$results_folder"
+      if [ -f "$parent_dir/$fit_file_name" ]; then
+        echo "Copy fits file: $fit_file_name"
+        cp "$parent_dir/$fit_file_name" "$sky_fit_folder"
       fi
-
+      if [ -f "$parent_dir/$mp4_file_name" ]; then
+        echo "Copy mp4 file: $mp4_file_name"
+        if [ "$parent_dir" = "$missed_fits" ]; then
+          cp "$parent_dir/$mp4_file_name" "$results_folder/missed_fits"
+        else
+          cp "$parent_dir/$mp4_file_name" "$results_folder"
+        fi
+      fi
     done
   cp "$source_folder/.config" "$sky_fit_folder"
   cp "$source_folder/platepar_cmn2010.cal" "$sky_fit_folder"
@@ -109,6 +117,11 @@ rms_results_folder="${results_folder}/rms"
 create_folder "$rms_results_folder"
 
 find "$source_folder" -type f -name "FTPdetectinfo_*.txt" -print0 |
+  while IFS= read -r -d '' file; do
+    cp "$file" "$rms_results_folder"
+  done
+
+find "$source_folder" -type f -name "*_radiants.txt" -print0 |
   while IFS= read -r -d '' file; do
     cp "$file" "$rms_results_folder"
   done

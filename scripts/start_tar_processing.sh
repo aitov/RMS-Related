@@ -96,45 +96,67 @@ find "$unpack_folder" -type f -name "FR_*.bin" -print0 |
 if [ -e "$missed_fits_files" ] && [ $(wc -c <"$missed_fits_files") -gt 0 ]; then
   missed_folder="$archive_files/$unpack_folder_name/missed_fits"
   create_folder "$missed_folder"
-  # copy from station directly and move to missed_fits folder
-  if [ -n "$ssh_host" ]; then
-    while IFS= read -r missed_fit_file; do
-      rsync --progress -e "ssh -p $ssh_port" "$ssh_host:$remote_captured_files/$unpack_folder_name/$missed_fit_file" "$missed_folder"
-      fit_file_without_ext="$(echo "$missed_fit_file" | cut -f 1 -d '.')"
-      mv "$archive_files/$unpack_folder_name/FR${fit_file_without_ext:2}.bin" "$missed_folder"
-    done <"$missed_fits_files"
-  else
-    # Waiting for manual copy
-    echo  "Exists missed fit files, copy from Captured and then press any key"
-    open -e "$missed_fits_files"
-    read -n 1 -s -r -p "Press any key to continue"
-    echo
-    if [ ! -d "$missed_fits_folder" ]; then
-      echo "Missed fits folder not found: $missed_fits_folder"
-      read -r -p "Do you want continue without missed fits? (y/n) " yn
-      case $yn in
-      [yY])
-        echo "Continue without missed fits files"
-        ;;
-      *)
-        read -n 1 -s -r -p "Press any key to exit"
-        echo
-        exit
-        ;;
-      esac
-    else
-      missed_files=()
+
+  processFits=true
+  records=$(wc -l <"$missed_fits_files")
+  if [ "$records" -gt 20 ]; then
+    echo "Missed fits more than 20 : $records"
+    read -r -p "Do you want continue to process missed fits? (y/n) " yn
+          case $yn in
+          [yY])
+            echo "loading $records missed fits"
+            ;;
+          *)
+            echo "Continue without missed fits files"
+            while IFS= read -r missed_fit_file; do
+              fit_file_without_ext="$(echo "$missed_fit_file" | cut -f 1 -d '.')"
+              mv "$archive_files/$unpack_folder_name/FR${fit_file_without_ext:2}.bin" "$missed_folder"
+            done <"$missed_fits_files"
+            processFits=false
+            ;;
+          esac
+  fi
+  if [ "$processFits" = true ]; then
+    # copy from station directly and move to missed_fits folder
+    if [ -n "$ssh_host" ]; then
       while IFS= read -r missed_fit_file; do
-        if [ ! -f "$missed_fits_folder/$missed_fit_file" ]; then
-          echo "Missed fits file not found: $missed_fit_file"
-          missed_files+=(" $missed_fit_file")
-        else
-          echo "Copy missed fits file: $missed_fit_file"
-          cp "$missed_fits_folder/$missed_fit_file" "$missed_folder"
-          fit_file_without_ext="$(echo "$missed_fit_file" | cut -f 1 -d '.')"
-          mv "$archive_files/$unpack_folder_name/FR${fit_file_without_ext:2}.bin" "$missed_folder"
-        fi
+        rsync --progress -e "ssh -p $ssh_port" "$ssh_host:$remote_captured_files/$unpack_folder_name/$missed_fit_file" "$missed_folder"
+        fit_file_without_ext="$(echo "$missed_fit_file" | cut -f 1 -d '.')"
+        mv "$archive_files/$unpack_folder_name/FR${fit_file_without_ext:2}.bin" "$missed_folder"
       done <"$missed_fits_files"
+    else
+      # Waiting for manual copy
+      echo  "Exists missed fit files, copy from Captured and then press any key"
+      open -e "$missed_fits_files"
+      read -n 1 -s -r -p "Press any key to continue"
+      echo
+      if [ ! -d "$missed_fits_folder" ]; then
+        echo "Missed fits folder not found: $missed_fits_folder"
+        read -r -p "Do you want continue without missed fits? (y/n) " yn
+        case $yn in
+        [yY])
+          echo "Continue without missed fits files"
+          ;;
+        *)
+          read -n 1 -s -r -p "Press any key to exit"
+          echo
+          exit
+          ;;
+        esac
+      else
+        missed_files=()
+        while IFS= read -r missed_fit_file; do
+          if [ ! -f "$missed_fits_folder/$missed_fit_file" ]; then
+            echo "Missed fits file not found: $missed_fit_file"
+            missed_files+=(" $missed_fit_file")
+          else
+            echo "Copy missed fits file: $missed_fit_file"
+            cp "$missed_fits_folder/$missed_fit_file" "$missed_folder"
+            fit_file_without_ext="$(echo "$missed_fit_file" | cut -f 1 -d '.')"
+            mv "$archive_files/$unpack_folder_name/FR${fit_file_without_ext:2}.bin" "$missed_folder"
+          fi
+        done <"$missed_fits_files"
+      fi
     fi
   fi
 fi
