@@ -37,6 +37,8 @@ dtparam=eth_led1=4
 Reboot
 
 # Camera VEYE-MIPI-IMX462 configuration
+Drivers: https://wiki.veye.cc/index.php/V4L2_mode_for_Raspberry_Pi
+
 Manual: https://wiki.veye.cc/index.php/VEYE-MIPI-290/327_i2c/
 
 Forum: https://forum.veye.cc/topic/366/veye-mipi-imx462-manual-gain-not-consistent
