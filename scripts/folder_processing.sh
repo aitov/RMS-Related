@@ -44,7 +44,7 @@ if [ -z "$bin_files" ]; then
 else
   echo "Generating mp4 for bins in : $source_folder"
 
-  python -m Utils.FRbinViewer -a -t -f mp4 -c "$source_folder/.config" "$source_folder"
+  python -m Utils.FRbinViewer -a -t -w -m -f mp4 -c "$source_folder/.config" "$source_folder"
 
   if [ -d "$missed_fits" ]; then
     fits_files=$(find "$missed_fits" -type f -name "FF_*.fits")
@@ -53,7 +53,7 @@ else
     else
       create_folder "$results_folder/missed_fits"
       echo "Generating mp4 for bins in : $missed_fits"
-      python -m Utils.FRbinViewer -a -t -f mp4 -c "$source_folder/.config" "$missed_fits"
+      python -m Utils.FRbinViewer -a -t -m -f mp4 -c "$source_folder/.config" "$missed_fits"
     fi
   fi
 
