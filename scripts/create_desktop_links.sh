@@ -8,6 +8,7 @@ fi ;
 
 DIR=$(realpath $DIR)
 echo "$DIR"
+echo $(pwd)
 # Get full path of Desktop
 DESKTOP=$(realpath ~/Desktop)
 

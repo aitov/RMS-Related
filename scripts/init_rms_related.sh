@@ -38,4 +38,7 @@ cd "scripts"
 
 . create_desktop_links.sh
 
+read -n 1 -s -r -p "Press any key to exit"
+echo
+
 
