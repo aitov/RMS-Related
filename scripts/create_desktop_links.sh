@@ -1,14 +1,6 @@
 #!/bin/bash
 
-if [ -L $0 ] ; then
-    DIR=$(dirname $(readlink -f $0)) ;
-else
-    DIR=$(dirname $0) ;
-fi ;
-
-DIR=$(realpath $DIR)
-echo "$DIR"
-echo $(pwd)
+DIR=$(pwd)
 # Get full path of Desktop
 DESKTOP=$(realpath ~/Desktop)
 
