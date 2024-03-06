@@ -19,7 +19,6 @@ if [ ! -d "RMS-Related" ]; then
   echo "Checkout RMS-Related"
   git clone https://github.com/aitov/RMS-Related.git
   cd "RMS-Related"
-  git checkout dev
 else
   cd "RMS-Related"
   git reset --hard HEAD
@@ -37,8 +36,4 @@ find . -type f -name "*.sh" -print0 |
 cd "scripts"
 
 . create_desktop_links.sh
-
-read -n 1 -s -r -p "Press any key to exit"
-echo
-
 
