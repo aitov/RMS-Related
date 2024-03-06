@@ -61,4 +61,6 @@ devices/VEYE-MIPI-IMX462/camera_config.txt
 Set to camera my config script:
 ```
 devices/VEYE-MIPI-IMX462/configure_camera.sh
+devices/VEYE-MIPI-IMX462/rp5_configure_camera.sh
 ```
+
