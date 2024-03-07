@@ -9,7 +9,7 @@ Useful scripts for local or remote (directly on Raspberry Pi) processing meteors
 5. Collects all generated results to one folder for local download;
 
 # Configuration
-If you are using heatsink with fans then Pi leds creates polluting light in box (red and green)
+If you are using open(without  ) RPi  then Pi leds creates polluting light inside box (red and green)
 
 Also, if connected ethernet cable it also has 2 leds (green and yellow) which also produces light  
 
@@ -53,27 +53,30 @@ For RPi4 it could be done by /etc/dhcp.config file
 For RPi5 need make next steps:
 
 Check current network settings by command:
-```
+```Shell
 ip r
 ```
-Check net device name by command:
+Check network device name by command:
 ```
 nmcli connection show
 ```
 Edit interfaces file by command:
-```
+```Shell
 sudo nano /etc/network/interfaces
 ```
-Add static ip configuration like:
+Add static ip configuration for ethernet like:
 ```
-auto lan0
-iface lan0 inet static
-address 192.168.1.100 # Enter your desired static IP address
-netmask 255.255.255.0 # Subnet mask
-gateway 192.168.1.1 # Default gateway
-dns-nameservers 192.168.1.1 # DNS server(s)
+auto eth0
+iface eth0 inet static
+address 192.168.1.100
+netmask 255.255.255.0
+gateway 192.168.1.1
 ```
-Save file and reboot 
+Save file and restart network service to make sure that no errors:
+```Shell
+sudo systemctl restart networking
+```
+After reboot always should be ip address : 192.168.1.100 
 
 
 
