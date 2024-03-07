@@ -11,29 +11,40 @@ Useful scripts for local or remote (directly on Raspberry Pi) processing meteors
 # Configuration
 If you are using heatsink with fans then Pi leds creates polluting light in box (red and green)
 
-Also, if connected ethernet cable it also has 2 leds (green and yellow) which produces some light  
+Also, if connected ethernet cable it also has 2 leds (green and yellow) which also produces light  
 
-You could to turn off power and activity indicator leds by configuration file.
+You could to turn off power and activity indicator leds in configuration file.
 
-Edit config.txt:
+For RPi4 need edit config:
 ```Shell
 sudo nano /boot/config.txt
 ```
-Add this line to turn off red led:
+And add next section:
 ```
+# turn off power (red) and hdd (green) leds
 dtparam=pwr_led_activelow=off
-```
-Add this line to turn off green led:
-```
 dtparam=act_led_trigger=none
 dtparam=act_led_activelow=off
-```
-Add this lines to disable ethernet port leds:
-```
+# trurn off ethernet leds (green and yellow)
 dtparam=eth_led0=4
 dtparam=eth_led1=4
 ```
 
+For RPi5 need edit config:
+```Shell
+sudo nano  /boot/firmware/config.txt
+```
+And add next options
+```
+# turn off power (red) and hdd (green) leds
+dtparam=pwr_led_trigger=default-on
+dtparam=pwr_led_activelow=off
+dtparam=act_led_trigger=default-on
+dtparam=act_led_activelow=off
+# trurn off ethernet leds (green and yellow)
+dtparam=eth_led0=4
+dtparam=eth_led1=4
+```
 Reboot
 
 # Static Ip configuration
