@@ -53,6 +53,15 @@ To configure camera with my settings need execute script:
 ```
 For Bookworm 64bit I had to compile i2c_write and i2c_read to make configration work (for version from repository I got errors)
 
+For compile use next script:
+```
+ ./raspberrypi/i2c_cmd/source/i2c_tools/make.sh 
+```
+Then make executable and copy i2c_write and i2c_read to: 
+```
+/raspberrypi/i2c_cmd/bin
+```
+
 To read configuration need execute script:
 ```Shell
 ./rp5_read_camera_config.sh

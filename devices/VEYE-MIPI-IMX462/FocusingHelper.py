@@ -1,8 +1,9 @@
 import cv2
 
-cap = cv2.VideoCapture(0)
-cap.set(3, 1920)
-cap.set(4, 1080)
+# RPi5 config should be device id and without Gray8 convert
+cap = cv2.VideoCapture("v4l2src device=/dev/video0 ! video/x-raw,format=UYVY, width=1920, height=1080,framerate=30/1 ! videoconvert ! appsink sync=1")
+#cap.set(3, 1920)
+#cap.set(4, 1080)
 
 while True:
     success, img = cap.read()

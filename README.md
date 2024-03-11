@@ -57,7 +57,7 @@ Check current network settings by command:
 ip r
 ```
 Check network device name by command:
-```
+```Shell
 nmcli connection show
 ```
 Edit interfaces file by command:
@@ -65,6 +65,8 @@ Edit interfaces file by command:
 sudo nano /etc/network/interfaces
 ```
 Add static ip configuration for ethernet like:
+
+Please note - ethernet should be connected, otherwise it creates virtual device and connection doesn't work even with wifi enabled
 ```
 auto eth0
 iface eth0 inet static
