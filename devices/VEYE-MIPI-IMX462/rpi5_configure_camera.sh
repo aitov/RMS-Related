@@ -30,6 +30,7 @@ i2cBus=6
 #./veye_mipi_i2c.sh -b $i2cBus -w -f new_mgain -p1 23	# 0.1 - 0.3 # between 20 and 25
 # 0x41 1/30 (25)
 ./veye_mipi_i2c.sh -b $i2cBus-w -f mshutter -p1 0x41
+# if brightness do not apply - comment 1st line (videoformat)
 ./veye_mipi_i2c.sh -b $i2cBus -w -f brightness -p1 0x07
 #./veye_mipi_i2c.sh -b $i2cBus -w -f csienable -p1 0x0
 # special code for sky imaging, to turn automatic bad point correction off

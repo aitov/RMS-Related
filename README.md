@@ -39,9 +39,9 @@ And add next options
 # turn off power (red) and hdd (green) leds
 dtparam=pwr_led_trigger=default-on
 dtparam=pwr_led_activelow=off
-dtparam=act_led_trigger=default-on
+dtparam=act_led_trigger=none
 dtparam=act_led_activelow=off
-# trurn off ethernet leds (green and yellow)
+# turn off ethernet leds (green and yellow)
 dtparam=eth_led0=4
 dtparam=eth_led1=4
 ```
@@ -89,6 +89,10 @@ Drivers: https://wiki.veye.cc/index.php/V4L2_mode_for_Raspberry_Pi
 
 Manual: https://wiki.veye.cc/index.php/VEYE-MIPI-290/327_i2c/
 
+Config tool:
+```
+git clone https://github.com/veyeimaging/raspberrypi.git
+```
 Forum: https://forum.veye.cc/topic/366/veye-mipi-imx462-manual-gain-not-consistent
 
 For RPi5 camera config please refer to file:

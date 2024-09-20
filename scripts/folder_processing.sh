@@ -151,6 +151,12 @@ find "$source_folder" -type f -name "*.kml" -print0 |
     cp "$file" "$rms_results_folder"
   done
 
+find "$source_folder" -type f -name "*.bmp" -print0 |
+  while IFS= read -r -d '' file; do
+    cp "$file" "$rms_results_folder"
+  done
+
+
 platepars_file="$source_folder/platepars_all_recalibrated.json"
 
 if [ -f "$platepars_file" ]; then
