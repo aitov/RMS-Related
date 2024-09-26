@@ -11,9 +11,9 @@ import os, datetime
 
 class RmsProcessing(QtWidgets.QMainWindow):
 
-    def __init__(self, input_path):
+    def __init__(self, inputPath):
         super(RmsProcessing, self).__init__()
-        self.input_path = input_path
+        self.inputPath = inputPath
         self.detectedCheckBoxes = {}
         self.toStackCheckBoxes = {}
         self.setupUI()
@@ -29,7 +29,7 @@ class RmsProcessing(QtWidgets.QMainWindow):
         scroll.setWidget(central)
         self.setCentralWidget(scroll)
 
-        data = MeteorData()
+        data = MeteorData(self.inputPath)
         detectedMeteors = data.readDetectedMeteors()
         self.detectedCount = len(detectedMeteors)
         self.detectedTotal = self.detectedCount
@@ -57,10 +57,7 @@ class RmsProcessing(QtWidgets.QMainWindow):
 
 
     def loadImage(self, imageName):
-        folder_path = "/Users/alexaitov/home/pi/RMS_data/ArchivedFiles/UA0004_20240108_145148_433498"
-        # folder_path = "/Users/alexaitov/home/pi/RMS_data/ArchivedFiles/UA0004_20231109_145806_373961"
-
-        return np.swapaxes(file.read(folder_path, imageName).maxpixel, 0, 1)
+        return np.swapaxes(file.read(self.inputPath, imageName).avepixel, 0, 1)
 
     def addImage(self, meteorData, layout):
         horizontalLayout = QtWidgets.QHBoxLayout()
@@ -148,17 +145,16 @@ class RmsProcessing(QtWidgets.QMainWindow):
         self.statusBar.showMessage("Detected meteors: {}/{}".format(self.detectedCount, self.detectedTotal))
 
 class MeteorData(object):
-    def __init__(self, fileName=None, meteorNumber=None, showerName=None):
+    def __init__(self, inputPath, fileName=None, meteorNumber=None, showerName=None):
         self.fileName = fileName
         self.meteorNumber = meteorNumber
         self.showerName = showerName
+        self.inputPath = inputPath
 
     def readDetectedMeteors(self):
-        folder_path = "/Users/alexaitov/home/pi/RMS_data/ArchivedFiles/UA0004_20240108_145148_433498"
-        # folder_path = "/Users/alexaitov/home/pi/RMS_data/ArchivedFiles/UA0004_20231109_145806_373961"
-        config = cr.loadConfigFromDirectory([folder_path + "/.config"], 'notused')
-        ftp_detect_file = findFTPdetectinfoFile(folder_path)
-        meteor_list = readFTPdetectinfo(folder_path, ftp_detect_file)
+        config = cr.loadConfigFromDirectory([self.inputPath + "/.config"], 'notused')
+        ftp_detect_file = findFTPdetectinfoFile(self.inputPath)
+        meteor_list = readFTPdetectinfo(self.inputPath, ftp_detect_file)
         associations_per_dir, _ = showerAssociation(config, [ftp_detect_file],
                                                     shower_code=None, show_plot=False, save_plot=False, plot_activity=False)
         associations = {}
@@ -169,7 +165,7 @@ class MeteorData(object):
         meteors = []
         for meteor in meteor_list:
             showerName = self.getMeteorShowerTitle(meteor[0], meteor[2], associations)
-            meteors.append(MeteorData(meteor[0], meteor[2], showerName))
+            meteors.append(MeteorData(self.inputPath, meteor[0], meteor[2], showerName))
         return meteors
 
     def getMeteorShowerTitle(self, ffFile, meteorNumber, associations):
@@ -215,9 +211,9 @@ if __name__ == '__main__':
 
     app = QtWidgets.QApplication(sys.argv)
 
-    # Init SkyFit
-    input_path = ""
-    plate_tool = RmsProcessing(input_path)
+    # Init Processing
+    inputPath = "/Users/alexaitov/home/pi/RMS_data/ArchivedFiles/LU0002_20240827_221539_021619"
+    processingTool = RmsProcessing(inputPath)
 
     # Run the GUI app
     sys.exit(app.exec_())
