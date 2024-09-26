@@ -101,17 +101,5 @@ for ssh_host in "${ssh_hosts_list[@]}"; do
     fi
   fi
 
-  if [ -n "$logs_folder" ]; then
-     if ssh "$ssh_host" -p "$ssh_port" "[ -d ${logs_folder} ]"; then
-        result_log_folder="$data_folder/log"
-        echo "$result_log_folder"
-        create_folder "$result_log_folder"
-        rsync -r -e "ssh -p $ssh_port" "$ssh_host:$logs_folder" "$data_folder"
-        if [ -n "$backup_folder" ]; then
-          create_folder "$backup_folder/log"
-          cp -r "$result_log_folder" "$backup_folder"
-        fi
-     fi
-  fi
 
 done

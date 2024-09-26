@@ -27,7 +27,8 @@ i2cBus=6
 # Whether the new version of manual exposure is enabled.
 ./veye_mipi_i2c.sh -b $i2cBus -w -f new_expmode -p1 0
 #./veye_mipi_i2c.sh -b $i2cBus -w -f new_mshutter -p1 40000 # fixed 40 ms
-#./veye_mipi_i2c.sh -b $i2cBus -w -f new_mgain -p1 23	# 0.1 - 0.3 # between 20 and 25
+#./veye_mipi_i2c.sh -b $i2cBus -w -f new_mgain -p1 27.9	# 0x73 in auto mode 0.1 - 0.3 # between 20 and 25
+# but if brightness will change - need set brightness to 0 and decrease gain
 # 0x41 1/30 (25)
 ./veye_mipi_i2c.sh -b $i2cBus-w -f mshutter -p1 0x41
 # if brightness do not apply - comment 1st line (videoformat)

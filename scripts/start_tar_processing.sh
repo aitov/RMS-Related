@@ -195,7 +195,6 @@ cd "$current_dir"
 
 # cleanup files and folders
 delete_folder "$unpack_folder"
-delete_folder "${results_folder}_sky_fit"
 delete_folder "$missed_fits_folder"
 delete_file "$missed_fits_files"
 delete_file "$tar_file"
