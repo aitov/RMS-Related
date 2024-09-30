@@ -26,12 +26,12 @@
 
 echo "Starting Tar processing"
 
-archive_files="$home_folder/pi/RMS_data/ArchivedFiles"
-processed_files="$home_folder/pi/RMS_data/ProcessedFiles"
+archive_files="$home_folder/RMS_data/ArchivedFiles"
+processed_files="$home_folder/RMS_data/ProcessedFiles"
 
 pi_user=${ssh_host%"@"*}
 
-# path on pi
+# path on RPi
 remote_archive_files="/home/$pi_user/RMS_data/ArchivedFiles"
 remote_captured_files="/home/$pi_user/RMS_data/CapturedFiles"
 

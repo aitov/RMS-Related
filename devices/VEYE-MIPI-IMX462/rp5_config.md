@@ -71,5 +71,15 @@ The result of read configuration could be compared with:
 rpi5_camera_config.txt
 ```
 
+RTC battery config
+
+```Shell
+sudo nano /boot/firmware/config.txt
+```
+add to [All] section to charge rtc battery:
+```
+dtparam=rtc_bbat_vchg=3000000
+```
+
 
 
