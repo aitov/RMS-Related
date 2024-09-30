@@ -39,6 +39,7 @@ else
   cd "RMS-Related"
   git reset --hard HEAD
   git pull
+  cd "scripts"
 fi
 
 
