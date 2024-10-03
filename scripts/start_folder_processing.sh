@@ -27,6 +27,8 @@ source_folder_name=$(basename "$source_folder")
 create_folder "$processed_files"
 
 results_folder="$processed_files/$source_folder_name"
+missed_fits_folder="$source_folder/missed_fits"
+confirmed_missed_fits="$confirmed_files/$source_folder_name/missed_fits"
 
 create_folder "$results_folder"
 
@@ -37,11 +39,14 @@ find "$source_folder" -type f -name "FR_*.bin" -print0 |
     fit_file_base="$(echo "$bin_file_name" | cut -f 1 -d '.')"
     fit_file_name="FF${fit_file_base:2}.fits"
     if [ ! -f "$source_folder/$fit_file_name" ]; then
+      create_folder "$missed_fits_folder"
+      create_folder "$confirmed_missed_fits"
       echo "Missed fits: $fit_file_name , copy from captured files"
-      cp "$captured_files/$source_folder_name/$fit_file_name" "$source_folder"
-      # copy also to missed_fits folder for detection and recalibration
-      create_folder "$source_folder/missed_fits"
-      cp "$captured_files/$source_folder_name/$fit_file_name" "$source_folder/missed_fits"
+      # copy to missed_fits folder for detection and recalibration
+      cp "$captured_files/$source_folder_name/$fit_file_name" "$missed_fits_folder"
+      cp "$captured_files/$source_folder_name/$fit_file_name" "$confirmed_missed_fits"
+      # move bin file to missed fits
+      mv "$bin_file" "$missed_fits_folder"
     fi
   done
 
