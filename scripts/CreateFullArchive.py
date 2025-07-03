@@ -33,13 +33,29 @@ def getDetectedMeteors(meteor_list):
 def archiveDetections(captured_path, archived_path, ff_detected, config):
     # Get the list of files to archive
     file_list = selectFiles(config, captured_path, ff_detected)
+    extra_files = getExtraFiles(captured_path)
+
     if file_list:
         # Create the archive ZIP in the parent directory of the archive directory
         archive_name = os.path.join(os.path.abspath(os.path.join(archived_path, os.pardir)),
                                     os.path.basename(archived_path) + '_detected')
         # Archive the files
-        archive_name = archiveDir(captured_path, file_list, archived_path, archive_name)
+        archive_name = archiveDir(captured_path, file_list, archived_path, archive_name, extra_files)
         return archive_name
     return None
+
+def getExtraFiles(captured_path):
+    extra_files = []
+    extra_files.append(".config")
+    for file_name in os.listdir(captured_path):
+        if ((file_name.lower().endswith('.kml'))
+                or (file_name.lower().endswith('_FT.tar.bz2'))
+                or (file_name.lower().endswith('.json'))
+                or (file_name.lower().endswith('mask.bmp'))
+                or (file_name.lower().endswith('.cal'))
+                or (file_name.lower().endswith('_timelapse.mp4'))):
+            extra_files.append(file_name)
+    return extra_files
+
 
 createFullArchive("/home/rms/RMS_data/CapturedFiles/UA0006_20250701_185701_383448", "/home/rms/RMS_data/ArchivedFiles/UA0006_20250701_185701_383448", None)
