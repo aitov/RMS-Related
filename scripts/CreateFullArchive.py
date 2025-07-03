@@ -46,7 +46,7 @@ def archiveDetections(captured_path, archived_path, ff_detected, config):
 
 def getExtraFiles(captured_path):
     extra_files = []
-    extra_files.append(".config")
+    extra_files.append(os.path.join(captured_path,".config"))
     for file_name in os.listdir(captured_path):
         if ((file_name.lower().endswith('.kml'))
                 or (file_name.lower().endswith('_FT.tar.bz2'))
@@ -54,7 +54,7 @@ def getExtraFiles(captured_path):
                 or (file_name.lower().endswith('mask.bmp'))
                 or (file_name.lower().endswith('.cal'))
                 or (file_name.lower().endswith('_timelapse.mp4'))):
-            extra_files.append(file_name)
+            extra_files.append(os.path.join(captured_path, file_name))
     print("Extracted files : {}".format(extra_files))
     return extra_files
 
