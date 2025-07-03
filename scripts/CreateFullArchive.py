@@ -40,7 +40,7 @@ def archiveDetections(captured_path, archived_path, ff_detected, config):
         archive_name = os.path.join(os.path.abspath(os.path.join(archived_path, os.pardir)),
                                     os.path.basename(archived_path) + '_detected')
         # Archive the files
-        archive_name = archiveDir(captured_path, file_list, archived_path, archive_name, extra_files)
+        archive_name = archiveDir(captured_path, file_list, archived_path, archive_name, extra_files=extra_files)
         return archive_name
     return None
 
