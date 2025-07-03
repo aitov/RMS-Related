@@ -16,7 +16,6 @@ def createFullArchive(captured_night_dir, archived_night_dir, config):
 
     ftp_detect_file = findFTPdetectinfoFile(captured_night_dir)
     ff_detected = getDetectedMeteors(readFTPdetectinfo(captured_night_dir, ftp_detect_file))
-    print(ff_detected)
     full_archive_dir = archived_night_dir + "_full"
     newConfig = deepcopy(config)
     newConfig.upload_mode = 1
@@ -47,10 +46,10 @@ def archiveDetections(captured_path, archived_path, ff_detected, config):
 def getExtraFiles(captured_path):
     extra_files = []
     extra_files.append(os.path.join(captured_path,".config"))
+    extra_files.append("mask.bmp")
     for file_name in os.listdir(captured_path):
         if ((file_name.lower().endswith('.kml'))
                 or (file_name.lower().endswith('.json'))
-                or (file_name.lower().endswith('mask.bmp'))
                 or (file_name.lower().endswith('.cal'))
                 or (file_name.lower().endswith('_timelapse.mp4'))):
             extra_files.append(os.path.join(captured_path, file_name))
