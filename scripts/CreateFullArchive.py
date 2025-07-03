@@ -55,6 +55,7 @@ def getExtraFiles(captured_path):
                 or (file_name.lower().endswith('.cal'))
                 or (file_name.lower().endswith('_timelapse.mp4'))):
             extra_files.append(file_name)
+    print("Extracted files : {}".format(extra_files))
     return extra_files
 
 
