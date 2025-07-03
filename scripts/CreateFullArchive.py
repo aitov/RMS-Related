@@ -57,6 +57,3 @@ def getExtraFiles(captured_path):
             extra_files.append(os.path.join(captured_path, file_name))
     print("Extracted files : {}".format(extra_files))
     return extra_files
-
-
-createFullArchive("/home/rms/RMS_data/CapturedFiles/UA0006_20250701_185701_383448", "/home/rms/RMS_data/ArchivedFiles/UA0006_20250701_185701_383448", None)
