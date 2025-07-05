@@ -5,6 +5,7 @@ from RMS.ArchiveDetections import selectFiles, archiveDir
 from RMS.ConfigReader import loadConfigFromDirectory
 
 def createFullArchive(captured_night_dir, archived_night_dir, config):
+
     print("Executing creating full archive")
     print("Captured dir path : {}".format(captured_night_dir))
     print("Archived dir path : {}".format(archived_night_dir))
@@ -14,6 +15,11 @@ def createFullArchive(captured_night_dir, archived_night_dir, config):
         config = loadConfigFromDirectory(None, 'notused')
         print("Loaded default config")
 
+    # Create lock file to avoid RMS rebooting the system
+    lockfile = os.path.join(config.data_dir, config.reboot_lock_file)
+    with open(lockfile, 'w') as _:
+        pass
+
     ftp_detect_file = findFTPdetectinfoFile(captured_night_dir)
     ff_detected = getDetectedMeteors(readFTPdetectinfo(captured_night_dir, ftp_detect_file))
     full_archive_dir = archived_night_dir + "_full"
@@ -22,6 +28,9 @@ def createFullArchive(captured_night_dir, archived_night_dir, config):
     print("Full archive dir  : {}".format(full_archive_dir))
     archive_name = archiveDetections(captured_night_dir, full_archive_dir, ff_detected, newConfig)
     print("Archived to  : {}".format(archive_name))
+
+    # Release lock file so RMS is authorized to reboot, if needed
+    os.remove(lockfile)
 
 def getDetectedMeteors(meteor_list):
     meteors = []

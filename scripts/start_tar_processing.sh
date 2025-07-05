@@ -72,6 +72,10 @@ if [ -z "$tar_file" ]; then
 fi
 
 unpack_folder=${tar_file%"_detected.tar.bz2"}
+# remove full for custom upload mode
+if [[ "$unpack_folder" == *_full ]]; then
+  unpack_folder=${unpack_folder%"_full"}
+fi
 
 create_folder "$unpack_folder"
 
