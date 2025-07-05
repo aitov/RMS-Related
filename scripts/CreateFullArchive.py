@@ -4,8 +4,8 @@ from RMS.Formats.FTPdetectinfo import readFTPdetectinfo, findFTPdetectinfoFile
 from RMS.ArchiveDetections import selectFiles, archiveDir
 from RMS.ConfigReader import loadConfigFromDirectory
 
-def createFullArchive(captured_night_dir, archived_night_dir, config):
 
+def createFullArchive(captured_night_dir, archived_night_dir, config):
     print("Executing creating full archive")
     print("Captured dir path : {}".format(captured_night_dir))
     print("Archived dir path : {}".format(archived_night_dir))
@@ -32,11 +32,13 @@ def createFullArchive(captured_night_dir, archived_night_dir, config):
     # Release lock file so RMS is authorized to reboot, if needed
     os.remove(lockfile)
 
+
 def getDetectedMeteors(meteor_list):
     meteors = []
     for meteor in meteor_list:
         meteors.append(meteor[0])
     return meteors
+
 
 def archiveDetections(captured_path, archived_path, ff_detected, config):
     # Get the list of files to archive
@@ -48,13 +50,14 @@ def archiveDetections(captured_path, archived_path, ff_detected, config):
         archive_name = os.path.join(os.path.abspath(os.path.join(archived_path, os.pardir)),
                                     os.path.basename(archived_path) + '_detected')
         # Archive the files
-        archive_name = archiveDir(captured_path, file_list, archived_path, archive_name, extra_files=extra_files)
+        archive_name = archiveDir(captured_path, file_list, archived_path, archive_name, True, extra_files)
         return archive_name
     return None
 
+
 def getExtraFiles(captured_path):
     extra_files = []
-    extra_files.append(os.path.join(captured_path,".config"))
+    extra_files.append(os.path.join(captured_path, ".config"))
     extra_files.append("mask.bmp")
     for file_name in os.listdir(captured_path):
         if ((file_name.lower().endswith('.kml'))
