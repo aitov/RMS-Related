@@ -4,8 +4,8 @@
 . activate.sh
 echo "Starting SkyFit2 processing"
 
-captured_files="$home_folder/pi/RMS_data/CapturedFiles"
-processed_files="$home_folder/pi/RMS_data/ProcessedFiles"
+captured_files="$home_folder/RMS_data/CapturedFiles"
+processed_files="$home_folder/RMS_data/ProcessedFiles"
 
 source_folder=$(python -c "import SelectDialog; print(SelectDialog.select_folder('$captured_files'))")
 

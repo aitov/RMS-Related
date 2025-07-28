@@ -37,6 +37,7 @@ def select_from_list(title, choices):
 
     root.resizable(False, False)
     root.title(title)
+    root.focus_force()
     choice = Choices(root, choices)
     root.mainloop()
     return choice.selected

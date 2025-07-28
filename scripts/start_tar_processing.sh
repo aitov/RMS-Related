@@ -26,12 +26,14 @@
 
 echo "Starting Tar processing"
 
-archive_files="$home_folder/pi/RMS_data/ArchivedFiles"
-processed_files="$home_folder/pi/RMS_data/ProcessedFiles"
+archive_files="$home_folder/RMS_data/ArchivedFiles"
+processed_files="$home_folder/RMS_data/ProcessedFiles"
 
-# path on pi
-remote_archive_files="/home/pi/RMS_data/ArchivedFiles"
-remote_captured_files="/home/pi/RMS_data/CapturedFiles"
+pi_user=${ssh_host%"@"*}
+
+# path on RPi
+remote_archive_files="/home/$pi_user/RMS_data/ArchivedFiles"
+remote_captured_files="/home/$pi_user/RMS_data/CapturedFiles"
 
 if [ -n "$ssh_host" ]; then
     ssh_port=22
@@ -70,6 +72,10 @@ if [ -z "$tar_file" ]; then
 fi
 
 unpack_folder=${tar_file%"_detected.tar.bz2"}
+# remove full for custom upload mode
+if [[ "$unpack_folder" == *_full ]]; then
+  unpack_folder=${unpack_folder%"_full"}
+fi
 
 create_folder "$unpack_folder"
 
@@ -193,7 +199,6 @@ cd "$current_dir"
 
 # cleanup files and folders
 delete_folder "$unpack_folder"
-delete_folder "${results_folder}_sky_fit"
 delete_folder "$missed_fits_folder"
 delete_file "$missed_fits_files"
 delete_file "$tar_file"

@@ -6,7 +6,7 @@ echo "Starting bin collecting"
 
 . activate.sh
 
-captured_files="$home_folder/pi/RMS_data/CapturedFiles"
+captured_files="$home_folder/RMS_data/CapturedFiles"
 
 target_folder=$(python -c "import SelectDialog; print(SelectDialog.select_folder('$captured_files'))")
 

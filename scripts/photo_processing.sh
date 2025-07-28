@@ -41,12 +41,6 @@ python -m Utils.BatchFFtoImage "$source_folder" jpg
 if [ -d "$missed_fits" ]; then
   python -m Utils.BatchFFtoImage "$missed_fits" jpg
 fi
-read -r -p "Do you want to run TrackStack? (y/n) " yn
-case $yn in
-[yY])
-  echo "Starting TrackStack"
-  python -m Utils.TrackStack "$source_folder" -c "$source_folder/.config" -x
-esac
 
 meteors_folder="$results_folder/meteors"
 
@@ -74,7 +68,10 @@ find "$source_folder" -type f -name "*_meteors.png" -print0 |
 
 find "$source_folder" -type f -name "*.csv" -print0 |
   while IFS= read -r -d '' file; do
-    cp "$file" "$results_folder"
-    cp "$file" "$results_folder/rms"
+    parent_dir="$(dirname "$file")"
+    if [ "$parent_dir" != "$missed_fits" ]; then
+      cp "$file" "$results_folder"
+      cp "$file" "$results_folder/rms"
+    fi
   done
 

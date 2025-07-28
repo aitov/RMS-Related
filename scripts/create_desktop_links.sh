@@ -1,5 +1,6 @@
-DIR=$(dirname $0)
-DIR=$(realpath $DIR)
+#!/bin/bash
+
+DIR=$(pwd)
 # Get full path of Desktop
 DESKTOP=$(realpath ~/Desktop)
 

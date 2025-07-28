@@ -10,3 +10,5 @@ data_folder=
 backup_folder=
 csv_shared_folder=
 rms_related_folder==~/source/RMS-Related
+# set to -w to add meteor shower name to bin video, or keep empty to not
+meteor_shower=

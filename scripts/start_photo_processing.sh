@@ -2,8 +2,8 @@
 . activate.sh
 echo "Starting photo processing"
 
-confirmed_folder="$home_folder/pi/RMS_data/ConfirmedFiles"
-processed_files="$home_folder/pi/RMS_data/ProcessedFiles"
+confirmed_folder="$home_folder/RMS_data/ConfirmedFiles"
+processed_files="$home_folder/RMS_data/ProcessedFiles"
 
 source_folder=$(python -c "import SelectDialog; print(SelectDialog.select_folder('$confirmed_folder'))")
 

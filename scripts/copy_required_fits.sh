@@ -6,8 +6,8 @@ echo "Starting copy missed fits"
 
 . activate.sh
 
-captured_files="$home_folder/pi/RMS_data/CapturedFiles"
-processed_files="$home_folder/pi/RMS_data/ProcessedFiles"
+captured_files="$home_folder/RMS_data/CapturedFiles"
+processed_files="$home_folder/RMS_data/ProcessedFiles"
 
 missed_fits_files=$(python -c "import SelectDialog; print(SelectDialog.select_file('$captured_files', '*.txt'))")
 
