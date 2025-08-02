@@ -62,6 +62,10 @@ def getExtraFiles(captured_path):
     for file_name in os.listdir(captured_path):
         if ((file_name.lower().endswith('.kml'))
                 or (file_name.lower().endswith('.json'))
+                or (file_name.lower().endswith('.ecsv'))
+                or (file_name.lower().endswith('.json'))
+                or (file_name.lower().endswith('.txt'))
+                or (file_name.lower().endswith('.csv'))
                 or (file_name.lower().endswith('.cal'))
                 or (file_name.lower().endswith('_timelapse.mp4'))):
             extra_files.append(os.path.join(captured_path, file_name))

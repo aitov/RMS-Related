@@ -175,7 +175,12 @@ if [ -f "$cal_star_file" ]; then
   cp "$source_folder/${cal_star_file_name}.zip" "$rms_results_folder"
 fi
 
+without_full = ""
+# remove full for custom upload mode
+if [[ "$source_folder_name" == *_full ]]; then
+  without_full=${source_folder_name%"_full"}
+fi
 
 cp "$source_folder/.config" "$rms_results_folder"
 cp "$source_folder/platepar_cmn2010.cal" "$rms_results_folder"
-cp "$source_folder/${source_folder_name}_timelapse.mp4" "$rms_results_folder"
+cp "$source_folder/${without_full}_timelapse.mp4" "$rms_results_folder"
