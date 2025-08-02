@@ -57,7 +57,13 @@ current_dir=$(pwd)
 
 cd "$bin_viewer_folder"
 
-python -m CMN_binViewer "$source_folder" -c -f "FTPdetectinfo_${source_folder_name}.txt"
+without_full = ""
+# remove full for custom upload mode
+if [[ "$source_folder_name" == *_full ]]; then
+  without_full=${source_folder_name%"_full"}
+fi
+
+python -m CMN_binViewer "$source_folder" -c -f "FTPdetectinfo_${without_full}.txt"
 
 cd "$current_dir"
 
