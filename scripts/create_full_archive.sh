@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script for Raspberry Pi, will collect al bins with fits to separated folder and start SkyFit2 application
-cd "$home_folder/RMS-Related/scripts"
+cd ~/RMS-Related/scripts
 
 . activate.sh
 echo "Creating full archive"
