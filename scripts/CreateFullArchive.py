@@ -1,4 +1,5 @@
 import os
+import argparse
 from copy import deepcopy
 from RMS.Formats.FTPdetectinfo import readFTPdetectinfo, findFTPdetectinfoFile
 from RMS.ArchiveDetections import selectFiles, archiveDir
@@ -70,3 +71,17 @@ def getExtraFiles(captured_path):
                 or (file_name.lower().endswith('_timelapse.mp4'))):
             extra_files.append(os.path.join(captured_path, file_name))
     return extra_files
+
+if __name__ == "__main__":
+
+    arg_parser = argparse.ArgumentParser(description="Create a full archive of the captured night.",)
+    arg_parser.add_argument('captured_dir_path', metavar='CAP_DIR_PATH', type=str,
+                            help='Path to captured directory with FF files.')
+    arg_parser.add_argument('archived_dir_path', metavar='ARC_DIR_PATH', type=str,
+                            help='Path to archived directory to create archive.')
+    cml_args = arg_parser.parse_args()
+
+    captured_dir_path = os.path.normpath(cml_args.captured_dir_path)
+    archived_dir_path = os.path.normpath(cml_args.archived_dir_path)
+    # Create the full archive
+    createFullArchive(captured_dir_path, archived_dir_path, None)
