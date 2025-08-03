@@ -6,7 +6,7 @@ from RMS.ArchiveDetections import selectFiles, archiveDir
 from RMS.ConfigReader import loadConfigFromDirectory
 
 
-def createFullArchive(captured_night_dir, archived_night_dir, config):
+def createFullArchive(captured_night_dir, archived_night_dir, config, delete_folder=True):
     print("Executing creating full archive")
     print("Captured dir path : {}".format(captured_night_dir))
     print("Archived dir path : {}".format(archived_night_dir))
@@ -27,7 +27,7 @@ def createFullArchive(captured_night_dir, archived_night_dir, config):
     newConfig = deepcopy(config)
     newConfig.upload_mode = 1
     print("Full archive dir  : {}".format(full_archive_dir))
-    archive_name = archiveDetections(captured_night_dir, full_archive_dir, ff_detected, newConfig)
+    archive_name = archiveDetections(captured_night_dir, full_archive_dir, ff_detected, newConfig, delete_folder)
     print("Archived to  : {}".format(archive_name))
 
     # Release lock file so RMS is authorized to reboot, if needed
@@ -41,7 +41,7 @@ def getDetectedMeteors(meteor_list):
     return meteors
 
 
-def archiveDetections(captured_path, archived_path, ff_detected, config):
+def archiveDetections(captured_path, archived_path, ff_detected, config, delete_folder):
     # Get the list of files to archive
     file_list = selectFiles(config, captured_path, ff_detected)
     extra_files = getExtraFiles(captured_path)
@@ -51,7 +51,7 @@ def archiveDetections(captured_path, archived_path, ff_detected, config):
         archive_name = os.path.join(os.path.abspath(os.path.join(archived_path, os.pardir)),
                                     os.path.basename(archived_path) + '_detected')
         # Archive the files
-        archive_name = archiveDir(captured_path, file_list, archived_path, archive_name, True, extra_files)
+        archive_name = archiveDir(captured_path, file_list, archived_path, archive_name, delete_folder, extra_files)
         return archive_name
     return None
 
