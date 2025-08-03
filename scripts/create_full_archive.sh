@@ -19,6 +19,7 @@ fi
 source_folder_name=$(basename "$source_folder")
 results_folder="$archived_files/$source_folder_name"
 
+cd "$rms_folder"
 python /home/rms/source/RMS-Related/scripts/CreateFullArchive.py "$source_folder_name" "$results_folder"
 
 read -n 1 -s -r -p "Press any key to exit"
