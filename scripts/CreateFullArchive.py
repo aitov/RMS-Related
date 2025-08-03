@@ -79,9 +79,12 @@ if __name__ == "__main__":
                             help='Path to captured directory with FF files.')
     arg_parser.add_argument('archived_dir_path', metavar='ARC_DIR_PATH', type=str,
                             help='Path to archived directory to create archive.')
+    arg_parser.add_argument('delete_folder', metavar='DEL_FOLDER', type=str,
+                            help='Delete the archived folder after archiving')
     cml_args = arg_parser.parse_args()
 
     captured_dir_path = os.path.normpath(cml_args.captured_dir_path)
     archived_dir_path = os.path.normpath(cml_args.archived_dir_path)
+    delete_folder = cml_args.delete_folder.lower() == 'true'
     # Create the full archive
-    createFullArchive(captured_dir_path, archived_dir_path, None)
+    createFullArchive(captured_dir_path, archived_dir_path, None, delete_folder)
