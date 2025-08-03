@@ -175,7 +175,7 @@ if [ -f "$cal_star_file" ]; then
   cp "$source_folder/${cal_star_file_name}.zip" "$rms_results_folder"
 fi
 
-without_full = ""
+without_full="${source_folder_name}"
 # remove full for custom upload mode
 if [[ "$source_folder_name" == *_full ]]; then
   without_full=${source_folder_name%"_full"}

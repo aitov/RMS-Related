@@ -57,7 +57,7 @@ current_dir=$(pwd)
 
 cd "$bin_viewer_folder"
 
-without_full = ""
+without_full="$source_folder_name"
 # remove full for custom upload mode
 if [[ "$source_folder_name" == *_full ]]; then
   without_full=${source_folder_name%"_full"}
