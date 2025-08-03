@@ -21,7 +21,7 @@ source_folder_name=$(basename "$source_folder")
 results_folder="$archived_files/$source_folder_name"
 
 cd "$rms_folder"
-python ""$home_folder/RMS-Related/scripts/CreateFullArchive.py" "$source_folder" "$results_folder" "False"
+python "$home_folder/RMS-Related/scripts/CreateFullArchive.py" "$source_folder" "$results_folder" "False"
 
 read -n 1 -s -r -p "Press any key to exit"
 echo
