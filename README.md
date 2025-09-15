@@ -51,6 +51,13 @@ Reboot
 For RPi4 it could be done by /etc/dhcp.config file
 
 For RPi5 need make next steps:
+New : use network manager to set static ip address
+```Shell
+ sudo nmtui
+```
+add/edit ethernet connection, set static ip address and gateway
+
+Old solution: 
 
 Check current network settings by command:
 ```Shell
@@ -79,6 +86,30 @@ Save file and restart network service to make sure that no errors:
 sudo systemctl restart networking
 ```
 After reboot always should be ip address : 192.168.1.100 
+
+
+RPi5 RTS module
+Charging of the battery is disabled by default. There are sysfs files that show the charging voltage and limits:
+
+```
+/sys/devices/platform/soc/soc:rpi_rtc/rtc/rtc0/charging_voltage:0
+/sys/devices/platform/soc/soc:rpi_rtc/rtc/rtc0/charging_voltage_max:4400000
+/sys/devices/platform/soc/soc:rpi_rtc/rtc/rtc0/charging_voltage_min:1300000
+```
+To check the current voltage of the battery:
+```Shell
+cat /sys/devices/platform/soc/soc:rpi_rtc/rtc/rtc0/battery_voltage
+```
+
+To charge the battery at a set voltage, add rtc_bbat_vchg to /boot/firmware/config.txt:
+```
+dtparam=rtc_bbat_vchg=3000000
+```
+
+Please note - for new kernel versions path could be different, like:
+```
+/sys/devices/platform/soc@107c000000/soc@107c000000:rpi_rtc/rtc/rtc0
+```
 
 
 

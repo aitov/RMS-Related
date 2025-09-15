@@ -203,5 +203,5 @@ delete_folder "$missed_fits_folder"
 delete_file "$missed_fits_files"
 delete_file "$tar_file"
 
-read -n 1 -s -r -p "Press any key to exit"
-echo
+#read -n 1 -s -r -p "Press any key to exit"
+echo "Tar processing completed"
