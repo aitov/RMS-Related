@@ -26,28 +26,31 @@ for ssh_host in "${ssh_hosts_list[@]}"; do
   year=${folder_name:7:4}
   month=${folder_name:11:2}
 
-  if [ -n "$csv_shared_folder" ]; then
-    if [ ! -d "$csv_shared_folder" ]; then
-      echo "Specified csv shared folder doesn't exist : $csv_shared_folder"
-      echo "Copy skipped"
-    else
-      csv_file="$results_folder/rms/${folder_name}.csv"
-      if [ -e "$csv_file" ]; then
-        # skip empty (only with header) csv files
-        file_size=$(wc -c "$csv_file" | awk '{print $1}')
-        if [ $file_size -lt 100 ]; then
-          echo "csv file is empty: skipping, file: $csv_file"
-        else
-          csv_folder="$csv_shared_folder/$year"
-          create_folder "$csv_folder"
-          cp "$csv_file" "$csv_folder"
-          # merge all csv to one monthly folder
-          monthly_folder="$csv_folder/monthly/$month"
-          create_folder "$monthly_folder"
-          awk '(NR == 1) || (FNR > 1)' $csv_folder/${station_name}_${year}${month}*.csv > "$monthly_folder/${year}_${month}_${station_name}.csv"
-        fi
+  if [ -n "$csv_shared_folders" ]; then
+    csv_file="$results_folder/rms/${folder_name}.csv"
+    if [ -e "$csv_file" ]; then
+      # skip empty (only with header) csv files
+      file_size=$(wc -c "$csv_file" | awk '{print $1}')
+      if [ "$file_size" -lt 100 ]; then
+        echo "csv file is empty: skipping, file: $csv_file"
+      else
+        IFS=',' read -ra csv_shared_folder_list <<< "$csv_shared_folders"
+        for csv_shared_folder in "${csv_shared_folder_list[@]}"; do
+            if [ ! -d "$csv_shared_folder" ]; then
+              echo "Specified csv shared folder doesn't exist : $csv_shared_folder"
+              echo "Copy skipped"
+            else
+              csv_folder="$csv_shared_folder/$year"
+              create_folder "$csv_folder"
+              cp "$csv_file" "$csv_folder"
+              # merge all csv to one monthly folder
+              monthly_folder="$csv_folder/monthly/$month"
+              create_folder "$monthly_folder"
+              awk '(NR == 1) || (FNR > 1)' $csv_folder/${station_name}_${year}${month}*.csv > "$monthly_folder/${year}_${month}_${station_name}.csv"
+            fi
+        done
       fi
-    fi
+   fi
   fi
 
   parent_target_folder="$data_folder/$year/$month/$station_name"
@@ -85,20 +88,23 @@ for ssh_host in "${ssh_hosts_list[@]}"; do
   echo "Move folder to data: $folder_name"
   mv "$results_folder" "$target_folder"
 
-  if [ -n "$backup_folder" ]; then
-    echo "Copy files to backup drive"
-    parent_backup_folder="$backup_folder/$year/$month/$station_name"
-    create_folder "$parent_backup_folder"
+  # Refactored backup section to support multiple backup locations
+  if [ -n "$backup_folders" ]; then
+    IFS=',' read -ra backup_folder_list <<< "$backup_folders"
+    for backup_folder in "${backup_folder_list[@]}"; do
+      echo "Copy files to backup drive: $backup_folder"
+      parent_backup_folder="$backup_folder/$year/$month/$station_name"
+      create_folder "$parent_backup_folder"
 
-    cp -R "$target_folder" "$backup_folder/$year/$month/$station_name"
+      cp -R "$target_folder" "$backup_folder/$year/$month/$station_name"
 
-    backup_stacks_folder="$backup_folder/$year/$month/$station_name/stacks"
+      backup_stacks_folder="$backup_folder/$year/$month/$station_name/stacks"
+      create_folder "$backup_stacks_folder"
 
-    create_folder "$backup_stacks_folder"
-
-    if [ -n "$stack_file_name" ] && [ ! -f "$backup_stacks_folder/$stack_file_name" ]; then
-      cp "$stacks_folder/$stack_file_name" "$backup_stacks_folder"
-    fi
+      if [ -n "$stack_file_name" ] && [ ! -f "$backup_stacks_folder/$stack_file_name" ]; then
+        cp "$stacks_folder/$stack_file_name" "$backup_stacks_folder"
+      fi
+    done
   fi
 
 
