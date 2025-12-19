@@ -6,9 +6,24 @@ from RMS.Formats.FTPdetectinfo import readFTPdetectinfo, findFTPdetectinfoFile
 from RMS.ArchiveDetections import selectFiles, archiveDir
 from RMS.ConfigReader import loadConfigFromDirectory
 from ProcessFolder import processFiles
+import configparser
+
+config_defaults = {}
+config_path = os.path.join(os.path.dirname(__file__), 'processing.ini')
+if os.path.exists(config_path):
+    parser = configparser.ConfigParser()
+    parser.read(config_path)
+    if parser.sections():
+       config_defaults.update(parser[parser.sections()[0]])
 
 
-def createFullArchive(captured_night_dir, archived_night_dir, config, delete_folder=True, process_folder=False):
+def createFullArchive(captured_night_dir, archived_night_dir, config):
+    delete_folder = boolValue(config_defaults.get('delete_folder', 'true'))
+    process_folder = boolValue(config_defaults.get('process_folder', 'false'))
+    createFullArchiveInteral(captured_night_dir, archived_night_dir, config, delete_folder, process_folder)
+
+
+def createFullArchiveInteral(captured_night_dir, archived_night_dir, config, delete_folder=True, process_folder=False):
     print("Executing creating full archive")
     print("Captured dir path : {}".format(captured_night_dir))
     print("Archived dir path : {}".format(archived_night_dir))
@@ -86,23 +101,19 @@ def getExtraFiles(captured_path):
 
     return extra_files
 
+def boolValue(val):
+    return str(val).lower() == 'true'
+
 
 if __name__ == "__main__":
-    arg_parser = argparse.ArgumentParser(description="Create a full archive of the captured night.", )
+    arg_parser = argparse.ArgumentParser(description="Create a full archive of the captured night.")
     arg_parser.add_argument('captured_dir_path', metavar='CAP_DIR_PATH', type=str,
                             help='Path to captured directory with FF files.')
     arg_parser.add_argument('archived_dir_path', metavar='ARC_DIR_PATH', type=str,
                             help='Path to archived directory to create archive.')
-    arg_parser.add_argument('delete_folder', metavar='DEL_FOLDER', type=str,
-                            help='Delete the archived folder after archiving')
-    arg_parser.add_argument('process_folder', metavar='PROCESS_FOLDER', type=str,
-                            help='Process full archive (convert to jpg and mp4) and create new archive')
-
     cml_args = arg_parser.parse_args()
 
     captured_dir_path = os.path.normpath(cml_args.captured_dir_path)
     archived_dir_path = os.path.normpath(cml_args.archived_dir_path)
-    delete_folder = cml_args.delete_folder.lower() == 'true'
-    process_folder = cml_args.process_folder.lower() == 'true'
     # Create the full archive
-    createFullArchive(captured_dir_path, archived_dir_path, None, delete_folder, process_folder)
+    createFullArchive(captured_dir_path, archived_dir_path, None)
