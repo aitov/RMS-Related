@@ -20,6 +20,8 @@ if os.path.exists(config_path):
 def createFullArchive(captured_night_dir, archived_night_dir, config):
     delete_folder = boolValue(config_defaults.get('delete_folder', 'false'))
     process_folder = boolValue(config_defaults.get('process_folder', 'false'))
+    print("Delete folder: {}".format(delete_folder))
+    print("Process folder: {}".format(process_folder))
     createFullArchiveInteral(captured_night_dir, archived_night_dir, config, delete_folder, process_folder)
 
 
