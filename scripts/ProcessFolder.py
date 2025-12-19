@@ -1,0 +1,264 @@
+import os
+import shutil
+import subprocess
+import glob
+import sys
+import zipfile
+import argparse
+from Utils.FRbinViewer import view as convertFRbinToMp4
+from Utils.FRbinViewer import loadShowerAssociations
+from Utils.BatchFFtoImage import batchFFtoImage
+
+import RMS.ConfigReader as cr
+
+
+def processFiles(captured_folder, source_folder, target_folder):
+    print("Processing files in  : {}".format(source_folder))
+    copyRmsFiles(source_folder, target_folder)
+    processMp4Files(captured_folder, source_folder, target_folder)
+    runDetectionOnMissedFits(source_folder)
+    processMeteorFiles(source_folder, target_folder)
+    copyCsvFiles(source_folder, target_folder)
+
+    archive_name = os.path.join(os.path.abspath(os.path.join(source_folder, os.pardir)),
+                                os.path.basename(target_folder) + '_detected')
+
+    archive_name = shutil.make_archive(os.path.join(target_folder, archive_name), 'bztar', target_folder)
+    print("Archived to  : {}".format(archive_name))
+    shutil.rmtree(target_folder)
+
+
+def getListOfMissedFits(source_folder):
+    """
+    Find all FR_*.bin files in source_folder, check for corresponding FF*.fits files,
+    and return a list of missing fits file names.
+    """
+    missed_fits = []
+    for root, _, files in os.walk(source_folder):
+        for file in files:
+            if file.startswith('FR_') and file.endswith('.bin'):
+                fit_file_base = file.split('.', 1)[0]
+                fit_file_name = "FF{}.fits".format(fit_file_base[2:])
+                fit_file_path = os.path.join(source_folder, fit_file_name)
+                if not os.path.isfile(fit_file_path):
+                    print("Missed fits: {}".format(fit_file_name))
+                    missed_fits.append(fit_file_name)
+    return missed_fits
+
+
+def copyMissedFits(capture_folder, source_folder):
+    missedFits = getListOfMissedFits(source_folder)
+    if not missedFits:
+        print("No missed fits files found.")
+        return
+    if len(missedFits) > 20:
+        print("Warning: More than 20 missed fits files detected ({}).".format(len(missedFits)))
+        print("Skipping processing of missed fits")
+        return
+    missed_fits_folder = os.path.join(source_folder, "missed_fits")
+    createFolder(missed_fits_folder)
+
+    # copy the missed fits files and move the corresponding bin files
+    for fit_file in missedFits:
+        fit_file_base = fit_file.split('.', 1)[0]
+        fr_file_name = "FR{}.bin".format(fit_file_base[2:])
+        fr_file_path = os.path.join(source_folder, fr_file_name)
+        fr_dest_path = os.path.join(missed_fits_folder, fr_file_name)
+        shutil.move(fr_file_path, fr_dest_path)
+        print("Moved bin file to missed fits folder: {}".format(fr_file_name))
+        fit_file_path = os.path.join(capture_folder, fit_file)
+        fit_dest_path = os.path.join(missed_fits_folder, fit_file)
+        if os.path.isfile(fit_file_path):
+            shutil.copy2(fit_file_path, fit_dest_path)
+            print("Copied missed fits file: {}".format(fit_file))
+        else:
+            print("Source missed fits file not found: {}".format(fit_file))
+
+
+def processMp4Files(capture_folder, source_folder, target_folder):
+    copyMissedFits(capture_folder, source_folder)
+
+    config_files = [os.path.join(source_folder, '.config')]
+    config = cr.loadConfigFromDirectory(config_files, 'notused')
+    associations = loadShowerAssociations(source_folder, config)
+
+    # convert all FR_*.bin files to mp4 in root folder
+    convertToMp4(source_folder, config, associations)
+    copyMp4(source_folder, target_folder)
+    # convert all FR_*.bin files to mp4 in missed_fits folder
+    missed_fits_folder = os.path.join(source_folder, "missed_fits")
+    if os.path.exists(missed_fits_folder):
+        convertToMp4(missed_fits_folder, config, associations)
+        target_missed_fits_folder = os.path.join(target_folder, "missed_fits")
+        createFolder(target_missed_fits_folder)
+        copyMp4(missed_fits_folder, target_missed_fits_folder)
+
+
+
+def convertToMp4(source_folder, config, associations=None):
+    if associations is None:
+        associations = {}
+    add_shower_name = True
+    if not associations:
+        print("Shower Associations not loaded, skipping add shower name")
+        add_shower_name = False
+    for file_name in os.listdir(source_folder):
+        if file_name.startswith('FR_') and file_name.endswith('.bin'):
+            fit_file_base = file_name.split('.', 1)[0]
+            fit_file_name = "FF{}.fits".format(fit_file_base[2:])
+            if not os.path.isfile(os.path.join(source_folder, fit_file_name)):
+                fit_file_name = None
+            print("Converting {} to mp4".format(os.path.join(source_folder, file_name)))
+            convertFRbinToMp4(source_folder, fit_file_name, file_name, config, append_ff_to_video=True,
+                              extract_format='mp4', hide=True, avg_background=True, add_timestamp=True,
+                              associations=associations, add_shower_name=add_shower_name)
+
+
+def copyMp4(source_folder, target_folder):
+    for file_name in os.listdir(source_folder):
+        if file_name.startswith('FR_') and file_name.endswith('.mp4'):
+            source_file = os.path.join(source_folder, file_name)
+            target_file = os.path.join(target_folder, file_name)
+            shutil.copy2(source_file, target_file)
+
+
+def processMeteorFiles(source_folder, target_folder):
+    meteors_folder = os.path.join(target_folder, "meteors")
+    createFolder(meteors_folder)
+    batchFFtoImage(source_folder, 'jpg')
+    copyMeteorFiles(source_folder, meteors_folder)
+    missed_fits_folder = os.path.join(source_folder, "missed_fits")
+    target_missed_fits_folder = os.path.join(target_folder, "missed_fits")
+
+    if os.path.exists(missed_fits_folder):
+        batchFFtoImage(missed_fits_folder, 'jpg')
+        copyMeteorFiles(missed_fits_folder, target_missed_fits_folder)
+
+
+def copyMeteorFiles(source_folder, target_folder):
+    for file_name in os.listdir(source_folder):
+        if (file_name.startswith('FF_') and file_name.endswith('.jpg')) or file_name.endswith('_meteors.jpg'):
+            source_file = os.path.join(source_folder, file_name)
+            target_file = os.path.join(target_folder, file_name)
+            shutil.copy2(source_file, target_file)
+
+
+def copyCsvFiles(source_folder, target_folder):
+    for file_name in os.listdir(source_folder):
+        if file_name.endswith('.csv'):
+            source_file = os.path.join(source_folder, file_name)
+            target_file = os.path.join(target_folder, file_name)
+            shutil.copy2(source_file, target_file)
+    missed_fits_folder = os.path.join(source_folder, "missed_fits")
+    target_missed_fits_folder = os.path.join(target_folder, "missed_fits")
+    if os.path.exists(missed_fits_folder):
+        for file_name in os.listdir(missed_fits_folder):
+            if file_name.endswith('.csv'):
+                source_file = os.path.join(missed_fits_folder, file_name)
+                target_file = os.path.join(target_missed_fits_folder, file_name)
+                shutil.copy2(source_file, target_file)
+
+
+def copyRmsFiles(source_path, target_path):
+    rms_folder = os.path.join(target_path, "rms")
+    createFolder(rms_folder)
+    zipBigFiles(source_path, rms_folder)
+    rms_files = getProcessedFiles(source_path)
+    for file_name in rms_files:
+        source_file = os.path.join(source_path, file_name)
+        target_file = os.path.join(rms_folder, file_name)
+        shutil.copy2(source_file, target_file)
+
+
+# Get files list to include in the processed archive
+def getProcessedFiles(source_path):
+    allowed_exts = ['.kml', '.ecsv', '.txt', '.csv', '.cal', '.png', '.jpg', '_timelapse.mp4', '.bmp', '.bz2',
+                    '.config']
+    fileList = []
+
+    for file_name in os.listdir(source_path):
+        lower = file_name.lower()
+        # Include by extension
+        if any(lower.endswith(ext) for ext in allowed_exts) and not lower.startswith('CALSTARS_'):
+            fileList.append(file_name)
+
+    return fileList
+
+
+def zipBigFiles(source_folder, target_folder):
+    platepars_file = os.path.join(source_folder, 'platepars_all_recalibrated.json')
+    zipFile(platepars_file, target_folder)
+
+    source_folder_name = os.path.basename(source_folder)
+    cal_star_file = os.path.join(source_folder, f'CALSTARS_{source_folder_name}.txt')
+
+    zipFile(cal_star_file, target_folder)
+
+
+def zipFile(file_path, target_folder):
+    if os.path.isfile(file_path):
+        file_name = os.path.basename(file_path)
+        zip_path = os.path.join(os.path.dirname(file_path), file_name + '.zip')
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            zipf.write(file_path, arcname=file_name)
+        shutil.copy(zip_path, target_folder)
+
+
+def runDetectionOnMissedFits(source_folder):
+    missed_fits_folder = os.path.join(source_folder, 'missed_fits')
+
+    if not os.path.exists(missed_fits_folder):
+        print('No missed_fits folder found, skipping detection on missed fits')
+        return
+
+    config_file = os.path.join(source_folder, '.config')
+    cal_file = os.path.join(source_folder, 'platepar_cmn2010.cal')
+
+    if not (os.path.isfile(config_file) and os.path.isfile(cal_file)):
+        print('.config or platepar_cmn2010.cal file not found, skipping calibration')
+        return
+    else:
+        shutil.copy(cal_file, missed_fits_folder)
+        for file in glob.glob(os.path.join(source_folder, 'CALSTARS_*.txt')):
+            shutil.copy(file, missed_fits_folder)
+        print('Starting detection in missed fits')
+        subprocess.run([
+            sys.executable, '-m', 'RMS.Detection', missed_fits_folder, '-c', config_file
+        ])
+        print('Starting calibration')
+        subprocess.run([
+            sys.executable, '-m', 'RMS.Astrometry.ApplyRecalibrate', missed_fits_folder, '-c', config_file
+        ])
+
+        cal_star_files = glob.glob(os.path.join(missed_fits_folder, 'CALSTARS_*.txt'))
+        if not cal_star_files:
+            print('No cal star file - run RMS2UFO manually')
+            ftp_files = glob.glob(os.path.join(missed_fits_folder, 'FTPdetectinfo_*.txt'))
+            if not ftp_files:
+                print('No ftp files found, exiting')
+                return
+            else:
+                for ftp_file in ftp_files:
+                    if not (ftp_file.endswith('_uncalibrated.txt') or '_backup_' in ftp_file):
+                        print(ftp_file)
+                        subprocess.run([
+                            sys.executable, '-m', 'Utils.RMS2UFO', ftp_file,
+                            os.path.join(missed_fits_folder, 'platepar_cmn2010.cal')
+                        ])
+
+
+def createFolder(folder_path):
+    if os.path.exists(folder_path):
+        shutil.rmtree(folder_path)
+    os.makedirs(folder_path, exist_ok=True)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Process captured meteor files.')
+    parser.add_argument('captured_folder', type=str, help='Path to the captured folder')
+    parser.add_argument('source_folder', type=str, help='Path to the source folder to process')
+    parser.add_argument('target_folder', type=str, help='Path to the target folder to store processed files')
+
+    args = parser.parse_args()
+
+    processFiles(args.captured_folder, args.source_folder, args.target_folder)

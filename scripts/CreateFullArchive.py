@@ -1,12 +1,14 @@
 import os
 import argparse
+import shutil
 from copy import deepcopy
 from RMS.Formats.FTPdetectinfo import readFTPdetectinfo, findFTPdetectinfoFile
 from RMS.ArchiveDetections import selectFiles, archiveDir
 from RMS.ConfigReader import loadConfigFromDirectory
+from ProcessFolder import processFiles
 
 
-def createFullArchive(captured_night_dir, archived_night_dir, config, delete_folder=True):
+def createFullArchive(captured_night_dir, archived_night_dir, config, delete_folder=True, process_folder=False):
     print("Executing creating full archive")
     print("Captured dir path : {}".format(captured_night_dir))
     print("Archived dir path : {}".format(archived_night_dir))
@@ -27,9 +29,14 @@ def createFullArchive(captured_night_dir, archived_night_dir, config, delete_fol
     newConfig = deepcopy(config)
     newConfig.upload_mode = 1
     print("Full archive dir  : {}".format(full_archive_dir))
-    archive_name = archiveDetections(captured_night_dir, full_archive_dir, ff_detected, newConfig, delete_folder)
+    archive_name = archiveDetections(captured_night_dir, full_archive_dir, ff_detected, newConfig)
     print("Archived to  : {}".format(archive_name))
 
+    if process_folder:
+        processFiles(captured_night_dir, full_archive_dir, archived_night_dir + "_processed")
+
+    if delete_folder:
+        shutil.rmtree(full_archive_dir)
     # Release lock file so RMS is authorized to reboot, if needed
     os.remove(lockfile)
 
@@ -41,7 +48,7 @@ def getDetectedMeteors(meteor_list):
     return meteors
 
 
-def archiveDetections(captured_path, archived_path, ff_detected, config, delete_folder):
+def archiveDetections(captured_path, archived_path, ff_detected, config):
     # Get the list of files to archive
     file_list = selectFiles(config, captured_path, ff_detected)
     extra_files = getExtraFiles(captured_path)
@@ -51,40 +58,51 @@ def archiveDetections(captured_path, archived_path, ff_detected, config, delete_
         archive_name = os.path.join(os.path.abspath(os.path.join(archived_path, os.pardir)),
                                     os.path.basename(archived_path) + '_detected')
         # Archive the files
-        archive_name = archiveDir(captured_path, file_list, archived_path, archive_name, delete_folder, extra_files)
+        archive_name = archiveDir(captured_path, file_list, archived_path, archive_name, False, extra_files)
         return archive_name
     return None
 
 
 def getExtraFiles(captured_path):
+    allowed_extra_exts = ['.kml', '.json', '.ecsv', '.txt', '.csv', '.cal']
     extra_files = []
     extra_files.append(os.path.join(captured_path, ".config"))
     extra_files.append("mask.bmp")
+
+    # Allowed extensions for extra files
     for file_name in os.listdir(captured_path):
-        if ((file_name.lower().endswith('.kml'))
-                or (file_name.lower().endswith('.json'))
-                or (file_name.lower().endswith('.ecsv'))
-                or (file_name.lower().endswith('.txt'))
-                or (file_name.lower().endswith('.csv'))
-                or (file_name.lower().endswith('.cal'))
-                or (file_name.lower().startswith('flux_') and file_name.lower().endswith('.png'))
-                or (file_name.lower().endswith('_timelapse.mp4'))):
+        lower = file_name.lower()
+        # Include by extension
+        if any(lower.endswith(ext) for ext in allowed_extra_exts):
             extra_files.append(os.path.join(captured_path, file_name))
+            continue
+        # Special cases
+        if lower.startswith('flux_') and lower.endswith('.png'):
+            extra_files.append(os.path.join(captured_path, file_name))
+            continue
+        if lower.endswith('_timelapse.mp4'):
+            extra_files.append(os.path.join(captured_path, file_name))
+            continue
+
     return extra_files
 
-if __name__ == "__main__":
 
-    arg_parser = argparse.ArgumentParser(description="Create a full archive of the captured night.",)
+if __name__ == "__main__":
+    arg_parser = argparse.ArgumentParser(description="Create a full archive of the captured night.", )
     arg_parser.add_argument('captured_dir_path', metavar='CAP_DIR_PATH', type=str,
                             help='Path to captured directory with FF files.')
     arg_parser.add_argument('archived_dir_path', metavar='ARC_DIR_PATH', type=str,
                             help='Path to archived directory to create archive.')
     arg_parser.add_argument('delete_folder', metavar='DEL_FOLDER', type=str,
                             help='Delete the archived folder after archiving')
+    arg_parser.add_argument('process_folder', metavar='PROCESS_FOLDER', type=str,
+                            help='Process full archive (convert to jpg and mp4) and create new archive')
+
     cml_args = arg_parser.parse_args()
 
     captured_dir_path = os.path.normpath(cml_args.captured_dir_path)
     archived_dir_path = os.path.normpath(cml_args.archived_dir_path)
     delete_folder = cml_args.delete_folder.lower() == 'true'
+    process_folder = cml_args.process_folder.lower() == 'true'
     # Create the full archive
-    createFullArchive(captured_dir_path, archived_dir_path, None, delete_folder)
+    createFullArchive(captured_dir_path, archived_dir_path, None, delete_folder, process_folder)

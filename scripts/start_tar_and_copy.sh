@@ -42,6 +42,7 @@ for ssh_host in "${ssh_hosts_list[@]}"; do
             else
               csv_folder="$csv_shared_folder/$year"
               create_folder "$csv_folder"
+              echo "Copy csv to backup drive: $csv_folder"
               cp "$csv_file" "$csv_folder"
               # merge all csv to one monthly folder
               monthly_folder="$csv_folder/monthly/$month"
