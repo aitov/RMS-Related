@@ -18,12 +18,12 @@ if os.path.exists(config_path):
 
 
 def createFullArchive(captured_night_dir, archived_night_dir, config):
-    delete_folder = boolValue(config_defaults.get('delete_folder', 'true'))
+    delete_folder = boolValue(config_defaults.get('delete_folder', 'false'))
     process_folder = boolValue(config_defaults.get('process_folder', 'false'))
     createFullArchiveInteral(captured_night_dir, archived_night_dir, config, delete_folder, process_folder)
 
 
-def createFullArchiveInteral(captured_night_dir, archived_night_dir, config, delete_folder=True, process_folder=False):
+def createFullArchiveInteral(captured_night_dir, archived_night_dir, config, delete_folder=False, process_folder=False):
     print("Executing creating full archive")
     print("Captured dir path : {}".format(captured_night_dir))
     print("Archived dir path : {}".format(archived_night_dir))
