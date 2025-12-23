@@ -18,7 +18,7 @@ def processFiles(captured_folder, source_folder, target_folder):
     processMp4Files(captured_folder, source_folder, target_folder)
     runDetectionOnMissedFits(source_folder)
     processMeteorFiles(source_folder, target_folder)
-    copyMissedFitsCsvFile(source_folder, target_folder)
+    copyCsvFiles(source_folder, target_folder)
 
     archive_name = os.path.join(os.path.abspath(os.path.join(source_folder, os.pardir)),
                                 os.path.basename(target_folder) + '_detected')
@@ -144,7 +144,12 @@ def copyMeteorFiles(source_folder, target_folder):
             shutil.copy2(source_file, target_file)
 
 
-def copyMissedFitsCsvFile(source_folder, target_folder):
+def copyCsvFiles(source_folder, target_folder):
+    for file_name in os.listdir(source_folder):
+        if file_name.endswith('.csv'):
+            source_file = os.path.join(source_folder, file_name)
+            target_file = os.path.join(target_folder, file_name)
+            shutil.copy2(source_file, target_file)
     missed_fits_folder = os.path.join(source_folder, "missed_fits")
     target_missed_fits_folder = os.path.join(target_folder, "missed_fits")
     if os.path.exists(missed_fits_folder):

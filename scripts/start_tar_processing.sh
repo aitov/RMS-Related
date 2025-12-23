@@ -43,11 +43,14 @@ if [ -n "$ssh_host" ]; then
       ssh_host=${ssh_host%":$ssh_port"}
     fi
 
-    tar_files=($(ssh "$ssh_host" -p "$ssh_port" "cd $remote_archive_files && ls -t *.tar.bz2"))
-    tar_files_string=$(printf ",\"%s\"" "${tar_files[@]}")
+    tar_files=($(ssh "$ssh_host" -p "$ssh_port" "cd $remote_archive_files && ls -lt --block-size=M *.tar.bz2 | awk '{print \$5 "," \$9}'"))
+
+    # Prepare Python list of tuples: [('size', 'filename'), ...]
+    tar_files_string=$(printf ",('%s','%s')" "${tar_files[@]//,/','}")
     tar_files_string=${tar_files_string:1}
 
-    tar_file_name=$(python -c "import SelectDialog; print(SelectDialog.select_from_list('Select tar file', [$tar_files_string]))")
+    # Call SelectDialog with list of tuples and extract only the file name (second element)
+    tar_file_name=$(python -c "import SelectDialog; result = SelectDialog.select_from_list('Select tar file', [${tar_files_string}]); print(result[1] if isinstance(result, (list, tuple)) and len(result) > 1 else result)")
 
     if [ -z "$tar_file_name" ]; then
       echo "File not selected, please select local tar file"
@@ -76,132 +79,132 @@ unpack_folder=${tar_file%"_detected.tar.bz2"}
 if [[ "$unpack_folder" == *_full ]]; then
   unpack_folder=${unpack_folder%"_full"}
 fi
+# remove processed for already processed
+if [[ "$unpack_folder" == *_processed ]]; then
+  unpack_folder=${unpack_folder%"_processed"}
+fi
 
-create_folder "$unpack_folder"
-
-echo "Unpack tar : $tar_file to folder: $unpack_folder"
-tar -xvf "$tar_file" -C "$unpack_folder" || exit
-
-unpack_folder_name=$(basename "$unpack_folder")
-parent_dir="$(dirname "$unpack_folder")"
-missed_fits_files="$parent_dir/${unpack_folder_name}_missed_fits.txt"
-missed_fits_folder="$parent_dir/${unpack_folder_name}_missed_fits"
-rm -f "$missed_fits_files"
-
-find "$unpack_folder" -type f -name "FR_*.bin" -print0 |
-  while IFS= read -r -d '' bin_file; do
-    bin_file_name=$(basename "$bin_file")
-    fit_file_base="$(echo "$bin_file_name" | cut -f 1 -d '.')"
-    fit_file_name="FF${fit_file_base:2}.fits"
-    if [ ! -f "$unpack_folder/$fit_file_name" ]; then
-      echo "Missed fits: $fit_file_name"
-      echo "$fit_file_name" >>"$missed_fits_files"
+# Check if tar file is already processed on remote PC
+if [[ "$tar_file" == *processed_detected.tar.bz2 ]]; then
+  echo "Archive $tar_file was already processed on remote PC. Unpacking and copying all files to results folder."
+  create_folder "$unpack_folder"
+  tar -xvf "$tar_file" -C "$unpack_folder" || exit
+  results_folder="$processed_files/$(basename "$unpack_folder")"
+  create_folder "$results_folder"
+  cp -a "$unpack_folder"/. "$results_folder"/
+  echo "All files copied to $results_folder."
+else
+  create_folder "$unpack_folder"
+  echo "Unpack tar : $tar_file to folder: $unpack_folder"
+  tar -xvf "$tar_file" -C "$unpack_folder" || exit
+  unpack_folder_name=$(basename "$unpack_folder")
+  parent_dir="$(dirname "$unpack_folder")"
+  missed_fits_files="$parent_dir/${unpack_folder_name}_missed_fits.txt"
+  missed_fits_folder="$parent_dir/${unpack_folder_name}_missed_fits"
+  rm -f "$missed_fits_files"
+  find "$unpack_folder" -type f -name "FR_*.bin" -print0 |
+    while IFS= read -r -d '' bin_file; do
+      bin_file_name=$(basename "$bin_file")
+      fit_file_base="$(echo "$bin_file_name" | cut -f 1 -d '.')"
+      fit_file_name="FF${fit_file_base:2}.fits"
+      if [ ! -f "$unpack_folder/$fit_file_name" ]; then
+        echo "Missed fits: $fit_file_name"
+        echo "$fit_file_name" >>"$missed_fits_files"
+      fi
+    done
+  if [ -e "$missed_fits_files" ] && [ $(wc -c <"$missed_fits_files") -gt 0 ]; then
+    missed_folder="$archive_files/$unpack_folder_name/missed_fits"
+    create_folder "$missed_folder"
+    processFits=true
+    records=$(wc -l <"$missed_fits_files")
+    if [ "$records" -gt 20 ]; then
+      echo "Missed fits more than 20 : $records"
+      read -r -p "Do you want continue to process missed fits? (y/n) " yn
+            case $yn in
+            [yY])
+              echo "loading $records missed fits"
+              ;;
+            *)
+              echo "Continue without missed fits files"
+              while IFS= read -r missed_fit_file; do
+                fit_file_without_ext="$(echo "$missed_fit_file" | cut -f 1 -d '.')"
+                mv "$archive_files/$unpack_folder_name/FR${fit_file_without_ext:2}.bin" "$missed_folder"
+              done <"$missed_fits_files"
+              processFits=false
+              ;;
+            esac
     fi
-  done
-
-if [ -e "$missed_fits_files" ] && [ $(wc -c <"$missed_fits_files") -gt 0 ]; then
-  missed_folder="$archive_files/$unpack_folder_name/missed_fits"
-  create_folder "$missed_folder"
-
-  processFits=true
-  records=$(wc -l <"$missed_fits_files")
-  if [ "$records" -gt 20 ]; then
-    echo "Missed fits more than 20 : $records"
-    read -r -p "Do you want continue to process missed fits? (y/n) " yn
+    if [ "$processFits" = true ]; then
+      # copy from station directly and move to missed_fits folder
+      if [ -n "$ssh_host" ]; then
+        while IFS= read -r missed_fit_file; do
+          rsync --progress -e "ssh -p $ssh_port" "$ssh_host:$remote_captured_files/$unpack_folder_name/$missed_fit_file" "$missed_folder"
+          fit_file_without_ext="$(echo "$missed_fit_file" | cut -f 1 -d '.')"
+          mv "$archive_files/$unpack_folder_name/FR${fit_file_without_ext:2}.bin" "$missed_folder"
+        done <"$missed_fits_files"
+      else
+        # Waiting for manual copy
+        echo  "Exists missed fit files, copy from Captured and then press any key"
+        open -e "$missed_fits_files"
+        read -n 1 -s -r -p "Press any key to continue"
+        echo
+        if [ ! -d "$missed_fits_folder" ]; then
+          echo "Missed fits folder not found: $missed_fits_folder"
+          read -r -p "Do you want continue without missed fits? (y/n) " yn
           case $yn in
           [yY])
-            echo "loading $records missed fits"
+            echo "Continue without missed fits files"
             ;;
           *)
-            echo "Continue without missed fits files"
-            while IFS= read -r missed_fit_file; do
-              fit_file_without_ext="$(echo "$missed_fit_file" | cut -f 1 -d '.')"
-              mv "$archive_files/$unpack_folder_name/FR${fit_file_without_ext:2}.bin" "$missed_folder"
-            done <"$missed_fits_files"
-            processFits=false
+            read -n 1 -s -r -p "Press any key to exit"
+            echo
+            exit
             ;;
           esac
-  fi
-  if [ "$processFits" = true ]; then
-    # copy from station directly and move to missed_fits folder
-    if [ -n "$ssh_host" ]; then
-      while IFS= read -r missed_fit_file; do
-        rsync --progress -e "ssh -p $ssh_port" "$ssh_host:$remote_captured_files/$unpack_folder_name/$missed_fit_file" "$missed_folder"
-        fit_file_without_ext="$(echo "$missed_fit_file" | cut -f 1 -d '.')"
-        mv "$archive_files/$unpack_folder_name/FR${fit_file_without_ext:2}.bin" "$missed_folder"
-      done <"$missed_fits_files"
-    else
-      # Waiting for manual copy
-      echo  "Exists missed fit files, copy from Captured and then press any key"
-      open -e "$missed_fits_files"
-      read -n 1 -s -r -p "Press any key to continue"
-      echo
-      if [ ! -d "$missed_fits_folder" ]; then
-        echo "Missed fits folder not found: $missed_fits_folder"
-        read -r -p "Do you want continue without missed fits? (y/n) " yn
-        case $yn in
-        [yY])
-          echo "Continue without missed fits files"
-          ;;
-        *)
-          read -n 1 -s -r -p "Press any key to exit"
-          echo
-          exit
-          ;;
-        esac
-      else
-        missed_files=()
-        while IFS= read -r missed_fit_file; do
-          if [ ! -f "$missed_fits_folder/$missed_fit_file" ]; then
-            echo "Missed fits file not found: $missed_fit_file"
-            missed_files+=(" $missed_fit_file")
-          else
-            echo "Copy missed fits file: $missed_fit_file"
-            cp "$missed_fits_folder/$missed_fit_file" "$missed_folder"
-            fit_file_without_ext="$(echo "$missed_fit_file" | cut -f 1 -d '.')"
-            mv "$archive_files/$unpack_folder_name/FR${fit_file_without_ext:2}.bin" "$missed_folder"
-          fi
-        done <"$missed_fits_files"
+        else
+          missed_files=()
+          while IFS= read -r missed_fit_file; do
+            if [ ! -f "$missed_fits_folder/$missed_fit_file" ]; then
+              echo "Missed fits file not found: $missed_fit_file"
+              missed_files+=(" $missed_fit_file")
+            else
+              echo "Copy missed fits file: $missed_fit_file"
+              cp "$missed_fits_folder/$missed_fit_file" "$missed_folder"
+              fit_file_without_ext="$(echo "$missed_fit_file" | cut -f 1 -d '.')"
+              mv "$archive_files/$unpack_folder_name/FR${fit_file_without_ext:2}.bin" "$missed_folder"
+            fi
+          done <"$missed_fits_files"
+        fi
       fi
     fi
   fi
+  if [ ${#missed_files[@]} -gt 0 ]; then
+    echo "Not all missed fits not found in folder : $missed_fits_folder"
+    echo "Missed fits: ${missed_files[*]}"
+    read -r -p "Do you want continue without missed fits? (y/n) " yn
+    case $yn in
+    [yY])
+      echo "Continue without missed fits file"
+      ;;
+    *)
+      read -n 1 -s -r -p "Press any key to exit"
+      echo
+      exit
+      ;;
+    esac
+  fi
+  create_folder "$processed_files"
+  results_folder="$processed_files/$unpack_folder_name"
+  create_folder "$results_folder"
+  current_dir=$(pwd)
+  . folder_processing.sh "$unpack_folder" "$results_folder"
+  cd "$current_dir"
+  . photo_processing.sh "$unpack_folder" "$results_folder"
+  # cleanup files and folders
+  delete_folder "$unpack_folder"
+  delete_folder "$missed_fits_folder"
+  delete_file "$missed_fits_files"
+  delete_file "$tar_file"
+  #read -n 1 -s -r -p "Press any key to exit"
+  echo "Tar processing completed"
 fi
-
-if [ ${#missed_files[@]} -gt 0 ]; then
-  echo "Not all missed fits not found in folder : $missed_fits_folder"
-  echo "Missed fits: ${missed_files[*]}"
-  read -r -p "Do you want continue without missed fits? (y/n) " yn
-  case $yn in
-  [yY])
-    echo "Continue without missed fits file"
-    ;;
-  *)
-    read -n 1 -s -r -p "Press any key to exit"
-    echo
-    exit
-    ;;
-  esac
-fi
-
-create_folder "$processed_files"
-
-results_folder="$processed_files/$unpack_folder_name"
-
-create_folder "$results_folder"
-
-current_dir=$(pwd)
-
-. folder_processing.sh "$unpack_folder" "$results_folder"
-
-cd "$current_dir"
-
-. photo_processing.sh "$unpack_folder" "$results_folder"
-
-# cleanup files and folders
-delete_folder "$unpack_folder"
-delete_folder "$missed_fits_folder"
-delete_file "$missed_fits_files"
-delete_file "$tar_file"
-
-#read -n 1 -s -r -p "Press any key to exit"
-echo "Tar processing completed"
