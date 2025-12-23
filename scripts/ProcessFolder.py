@@ -18,7 +18,7 @@ def processFiles(captured_folder, source_folder, target_folder):
     processMp4Files(captured_folder, source_folder, target_folder)
     runDetectionOnMissedFits(source_folder)
     processMeteorFiles(source_folder, target_folder)
-    copyCsvFiles(source_folder, target_folder)
+    copyMissedFitsCsvFile(source_folder, target_folder)
 
     archive_name = os.path.join(os.path.abspath(os.path.join(source_folder, os.pardir)),
                                 os.path.basename(target_folder) + '_detected')
@@ -124,7 +124,6 @@ def copyMp4(source_folder, target_folder):
 
 def processMeteorFiles(source_folder, target_folder):
     meteors_folder = os.path.join(target_folder, "meteors")
-    createFolder(meteors_folder)
     batchFFtoImage(source_folder, 'jpg')
     copyMeteorFiles(source_folder, meteors_folder)
     missed_fits_folder = os.path.join(source_folder, "missed_fits")
@@ -138,17 +137,14 @@ def processMeteorFiles(source_folder, target_folder):
 def copyMeteorFiles(source_folder, target_folder):
     for file_name in os.listdir(source_folder):
         if (file_name.startswith('FF_') and file_name.endswith('.jpg')) or file_name.endswith('_meteors.jpg'):
+            if not os.path.exists(target_folder):
+                createFolder(target_folder)
             source_file = os.path.join(source_folder, file_name)
             target_file = os.path.join(target_folder, file_name)
             shutil.copy2(source_file, target_file)
 
 
-def copyCsvFiles(source_folder, target_folder):
-    for file_name in os.listdir(source_folder):
-        if file_name.endswith('.csv'):
-            source_file = os.path.join(source_folder, file_name)
-            target_file = os.path.join(target_folder, file_name)
-            shutil.copy2(source_file, target_file)
+def copyMissedFitsCsvFile(source_folder, target_folder):
     missed_fits_folder = os.path.join(source_folder, "missed_fits")
     target_missed_fits_folder = os.path.join(target_folder, "missed_fits")
     if os.path.exists(missed_fits_folder):
