@@ -8,6 +8,7 @@ import argparse
 from Utils.FRbinViewer import view as convertFRbinToMp4
 from Utils.FRbinViewer import loadShowerAssociations
 from Utils.BatchFFtoImage import batchFFtoImage
+from RMS.ConfigReader import loadConfigFromDirectory
 
 import RMS.ConfigReader as cr
 
@@ -26,6 +27,26 @@ def processFiles(captured_folder, source_folder, target_folder):
     archive_name = shutil.make_archive(os.path.join(target_folder, archive_name), 'bztar', target_folder)
     print("Archived to  : {}".format(archive_name))
     shutil.rmtree(target_folder)
+
+
+def processFilesTask(captured_night_dir, archived_night_dir, config):
+    print("Executing processing files task")
+    print("Captured dir path : {}".format(captured_night_dir))
+    print("Archived dir path : {}".format(archived_night_dir))
+
+    if config is None:
+        print("No config file provided")
+        config = loadConfigFromDirectory(None, 'notused')
+        print("Loaded default config")
+    # Create lock file to avoid RMS rebooting the system
+    lockfile = os.path.join(config.data_dir, config.reboot_lock_file)
+    with open(lockfile, 'w') as _:
+        pass
+
+    processFiles(captured_night_dir, archived_night_dir,  archived_night_dir + "_processed")
+
+    # Release lock file so RMS is authorized to reboot, if needed
+    os.remove(lockfile)
 
 
 def getListOfMissedFits(source_folder):
