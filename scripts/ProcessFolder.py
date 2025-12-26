@@ -201,7 +201,7 @@ def getProcessedFiles(source_path):
     for file_name in os.listdir(source_path):
         lower = file_name.lower()
         # Include by extension
-        if any(lower.endswith(ext) for ext in allowed_exts) and not lower.startswith('CALSTARS_'):
+        if any(lower.endswith(ext) for ext in allowed_exts) and not lower.startswith('CALSTARS_') and not lower.endswith('_FT.tar.bz2'):
             fileList.append(file_name)
 
     return fileList
