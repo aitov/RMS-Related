@@ -199,9 +199,8 @@ def getProcessedFiles(source_path):
     fileList = []
 
     for file_name in os.listdir(source_path):
-        lower = file_name.lower()
         # Include by extension
-        if any(lower.endswith(ext) for ext in allowed_exts) and not lower.startswith('CALSTARS_') and not lower.endswith('_FT.tar.bz2'):
+        if any(file_name.endswith(ext) for ext in allowed_exts) and not file_name.startswith('CALSTARS_') and not file_name.endswith('_FT.tar.bz2'):
             fileList.append(file_name)
 
     return fileList
@@ -212,6 +211,10 @@ def zipBigFiles(source_folder, target_folder):
     zipFile(platepars_file, target_folder)
 
     source_folder_name = os.path.basename(source_folder)
+    # Remove '_full' suffix if present
+    if source_folder_name.endswith('_full'):
+        source_folder_name = source_folder_name[: -len('_full')]
+
     cal_star_file = os.path.join(source_folder, f'CALSTARS_{source_folder_name}.txt')
 
     zipFile(cal_star_file, target_folder)
