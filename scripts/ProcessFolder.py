@@ -72,10 +72,6 @@ def copyMissedFits(capture_folder, source_folder):
     if not missedFits:
         print("No missed fits files found.")
         return
-    if len(missedFits) > 20:
-        print("Warning: More than 20 missed fits files detected ({}).".format(len(missedFits)))
-        print("Skipping processing of missed fits")
-        return
     missed_fits_folder = os.path.join(source_folder, "missed_fits")
     createFolder(missed_fits_folder)
 
@@ -109,11 +105,17 @@ def processMp4Files(capture_folder, source_folder, target_folder):
     # convert all FR_*.bin files to mp4 in missed_fits folder
     missed_fits_folder = os.path.join(source_folder, "missed_fits")
     if os.path.exists(missed_fits_folder):
+        # Count number of FR_*.bin files in missed_fits_folder
+        num_fr_bin_files = len([f for f in os.listdir(missed_fits_folder) if f.startswith('FR_') and f.endswith('.bin')])
+        print("Number of FR_*.bin files in missed_fits folder: {}".format(num_fr_bin_files))
+        if num_fr_bin_files > 20:
+            print("Warning: More than 20 missed fits files detected ({}).".format(num_fr_bin_files))
+            print("Skipping processing of missed fits")
+            return
         convertToMp4(missed_fits_folder, config, associations)
         target_missed_fits_folder = os.path.join(target_folder, "missed_fits")
         createFolder(target_missed_fits_folder)
         copyMp4(missed_fits_folder, target_missed_fits_folder)
-
 
 
 def convertToMp4(source_folder, config, associations=None):
