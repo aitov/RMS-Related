@@ -74,7 +74,7 @@ for ssh_host in "${ssh_hosts_list[@]}"; do
 
   if [ -d "$meteors_folder" ]; then
     echo "copy meteors stack to stacks"
-    stack_files=$(find "$meteors_folder" -type f -name "*_meteors.png")
+    stack_files=$(find "$meteors_folder" -type f \( -name "*_meteors.png" -o -name "*_meteors.jpg" \))
     if [ -n "$stack_files" ]; then
       stack_file=${stack_files[0]}
       stack_file_name=$(basename "$stack_file")
