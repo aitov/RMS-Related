@@ -105,12 +105,7 @@ def processMp4Files(capture_folder, source_folder, target_folder):
     # convert all FR_*.bin files to mp4 in missed_fits folder
     missed_fits_folder = os.path.join(source_folder, "missed_fits")
     if os.path.exists(missed_fits_folder):
-        # Count number of FR_*.bin files in missed_fits_folder
-        num_fr_bin_files = len([f for f in os.listdir(missed_fits_folder) if f.startswith('FR_') and f.endswith('.bin')])
-        print("Number of FR_*.bin files in missed_fits folder: {}".format(num_fr_bin_files))
-        if num_fr_bin_files > 20:
-            print("Warning: More than 20 missed fits files detected ({}).".format(num_fr_bin_files))
-            print("Skipping processing of missed fits")
+        if missedFitsLimitReached(missed_fits_folder):
             return
         convertToMp4(missed_fits_folder, config, associations)
         target_missed_fits_folder = os.path.join(target_folder, "missed_fits")
@@ -153,6 +148,8 @@ def processMeteorFiles(source_folder, target_folder):
     target_missed_fits_folder = os.path.join(target_folder, "missed_fits")
 
     if os.path.exists(missed_fits_folder):
+        if missedFitsLimitReached(missed_fits_folder):
+            return
         batchFFtoImage(missed_fits_folder, 'jpg')
         copyMeteorFiles(missed_fits_folder, target_missed_fits_folder)
 
@@ -278,6 +275,21 @@ def createFolder(folder_path):
     if os.path.exists(folder_path):
         shutil.rmtree(folder_path)
     os.makedirs(folder_path, exist_ok=True)
+
+
+def missedFitsLimitReached(missed_fits_folder):
+    """
+    Check the number of FR_*.bin files in the missed_fits_folder.
+    Print the count and a warning if more than 20 are found.
+    Returns True if limit exceeded (should skip), False otherwise.
+    """
+    num_fr_bin_files = len([f for f in os.listdir(missed_fits_folder) if f.startswith('FR_') and f.endswith('.bin')])
+    print("Number of FR_*.bin files in missed_fits folder: {}".format(num_fr_bin_files))
+    if num_fr_bin_files > 20:
+        print("Warning: More than 20 missed fits files detected ({}).".format(num_fr_bin_files))
+        print("Skipping processing of missed fits")
+        return True
+    return False
 
 
 if __name__ == '__main__':
