@@ -2,111 +2,38 @@
 . activate.sh
 
 IFS=',' read -ra ssh_hosts_list <<< "$ssh_hosts"
+
+# Check which hosts are online and build a list of available hosts
+available_ssh_hosts_list=()
 for ssh_host in "${ssh_hosts_list[@]}"; do
+  # Parse user_host and port if present
+  if [[ "$ssh_host" == *:* ]]; then
+    user_host="${ssh_host%%:*}"
+    ssh_port="${ssh_host##*:}"
+    ssh_cmd=(ssh -o ConnectTimeout=3 -o BatchMode=yes -o StrictHostKeyChecking=no -p "$ssh_port" "$user_host" "exit")
+  else
+    user_host="$ssh_host"
+    ssh_cmd=(ssh -o ConnectTimeout=3 -o BatchMode=yes -o StrictHostKeyChecking=no "$user_host" "exit")
+  fi
+  "${ssh_cmd[@]}" 2>/dev/null
+  if [ $? -eq 0 ]; then
+    available_ssh_hosts_list+=("$ssh_host")
+    echo "Host $ssh_host is online."
+  else
+    echo "Host $ssh_host is offline or unreachable, skipping."
+  fi
+done
+
+if [ ${#available_ssh_hosts_list[@]} -eq 0 ]; then
+  echo "No available SSH hosts found. Exiting."
+  exit 1
+fi
+
+for ssh_host in "${available_ssh_hosts_list[@]}"; do
   cd "$rms_related_folder/scripts"
-  . start_tar_processing.sh
-
-  if [ ! -d "$results_folder" ]; then
-    echo "Please specify processed folder"
-    read -n 1 -s -r -p "Press any key to exit"
-    echo
-    exit
+  if [ "$automatic_processing" = "true" ]; then
+    . start_automatic_tar_processing.sh
+  else
+    . start_tar_processing.sh
   fi
-
-  folder_name=$(basename "$results_folder")
-
-  if [ ! "${folder_name:6:1}" = "_" ] || [ ! "${folder_name:15:1}" = "_" ]; then
-    echo "Folder should in RMS format : XX0000_yyyymmdd_..."
-    read -n 1 -s -r -p "Press any key to exit"
-    echo
-    exit
-  fi
-
-  station_name=${folder_name:0:6}
-  year=${folder_name:7:4}
-  month=${folder_name:11:2}
-
-  if [ -n "$csv_shared_folders" ]; then
-    csv_file="$results_folder/rms/${folder_name}.csv"
-    if [ -e "$csv_file" ]; then
-      # skip empty (only with header) csv files
-      file_size=$(wc -c "$csv_file" | awk '{print $1}')
-      if [ "$file_size" -lt 100 ]; then
-        echo "csv file is empty: skipping, file: $csv_file"
-      else
-        IFS=',' read -ra csv_shared_folder_list <<< "$csv_shared_folders"
-        for csv_shared_folder in "${csv_shared_folder_list[@]}"; do
-            if [ ! -d "$csv_shared_folder" ]; then
-              echo "Specified csv shared folder doesn't exist : $csv_shared_folder"
-              echo "Copy skipped"
-            else
-              csv_folder="$csv_shared_folder/$year"
-              create_folder "$csv_folder"
-              echo "Copy csv to backup drive: $csv_folder"
-              cp "$csv_file" "$csv_folder"
-              # merge all csv to one monthly folder
-              monthly_folder="$csv_folder/monthly/$month"
-              create_folder "$monthly_folder"
-              awk '(NR == 1) || (FNR > 1)' $csv_folder/${station_name}_${year}${month}*.csv > "$monthly_folder/${year}_${month}_${station_name}.csv"
-            fi
-        done
-      fi
-   fi
-  fi
-
-  parent_target_folder="$data_folder/$year/$month/$station_name"
-  create_folder "$parent_target_folder"
-
-  stacks_folder="$data_folder/$year/$month/$station_name/stacks"
-  create_folder "$stacks_folder"
-
-  target_folder="$parent_target_folder/$folder_name"
-  meteors_folder="$results_folder/meteors"
-
-
-  if [ -d "$target_folder" ]; then
-    echo "Folder already exists: $target_folder "
-    read -n 1 -s -r -p "Press any key to exit"
-    echo
-    continue
-  fi
-  stack_file_name=""
-
-  if [ -d "$meteors_folder" ]; then
-    echo "copy meteors stack to stacks"
-    stack_files=$(find "$meteors_folder" -type f \( -name "*_meteors.png" -o -name "*_meteors.jpg" \))
-    if [ -n "$stack_files" ]; then
-      stack_file=${stack_files[0]}
-      stack_file_name=$(basename "$stack_file")
-      if [ ! -f "$stacks_folder/$stack_file_name" ]; then
-        echo "Copy stack file : $stack_file_name"
-        cp "$stack_file" "$stacks_folder"
-      else
-        echo "Stack file $stack_file_name already exists, skip copy"
-      fi
-    fi
-  fi
-  echo "Move folder to data: $folder_name"
-  mv "$results_folder" "$target_folder"
-
-  # Refactored backup section to support multiple backup locations
-  if [ -n "$backup_folders" ]; then
-    IFS=',' read -ra backup_folder_list <<< "$backup_folders"
-    for backup_folder in "${backup_folder_list[@]}"; do
-      echo "Copy files to backup drive: $backup_folder"
-      parent_backup_folder="$backup_folder/$year/$month/$station_name"
-      create_folder "$parent_backup_folder"
-
-      cp -R "$target_folder" "$backup_folder/$year/$month/$station_name"
-
-      backup_stacks_folder="$backup_folder/$year/$month/$station_name/stacks"
-      create_folder "$backup_stacks_folder"
-
-      if [ -n "$stack_file_name" ] && [ ! -f "$backup_stacks_folder/$stack_file_name" ]; then
-        cp "$stacks_folder/$stack_file_name" "$backup_stacks_folder"
-      fi
-    done
-  fi
-
-
 done

@@ -173,6 +173,8 @@ def copyCsvFiles(source_folder, target_folder):
     missed_fits_folder = os.path.join(source_folder, "missed_fits")
     target_missed_fits_folder = os.path.join(target_folder, "missed_fits")
     if os.path.exists(missed_fits_folder):
+        if missedFitsLimitReached(missed_fits_folder):
+            return
         for file_name in os.listdir(missed_fits_folder):
             if file_name.endswith('.csv'):
                 source_file = os.path.join(missed_fits_folder, file_name)

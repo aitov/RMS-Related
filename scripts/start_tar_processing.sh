@@ -43,11 +43,16 @@ if [ -n "$ssh_host" ]; then
       ssh_host=${ssh_host%":$ssh_port"}
     fi
 
-    tar_files=($(ssh "$ssh_host" -p "$ssh_port" "cd $remote_archive_files && ls -lt --block-size=M *.tar.bz2 | awk '{print \$5 "," \$9}'"))
-
-    # Prepare Python list of tuples: [('size', 'filename'), ...]
-    tar_files_string=$(printf ",('%s','%s')" "${tar_files[@]//,/','}")
-    tar_files_string=${tar_files_string:1}
+    tar_files=($(ssh "$ssh_host" -p "$ssh_port" "cd $remote_archive_files && ls -lt --block-size=M *.tar.bz2 2>/dev/null | awk '{print \$5 "," \$9}'"))
+    if [ ${#tar_files[@]} -eq 0 ]; then
+      # No files found, tar_files is an empty array
+      tar_files=()
+      tar_files_string=""
+    else
+      # Prepare Python list of tuples: [('size', 'filename'), ...]
+      tar_files_string=$(printf ",('%s','%s')" "${tar_files[@]//,/','}")
+      tar_files_string=${tar_files_string:1}
+    fi
 
     # Call SelectDialog with list of tuples and extract only the file name (second element)
     tar_file_name=$(python -c "import SelectDialog; result = SelectDialog.select_from_list('Select tar file', [${tar_files_string}]); print(result[1] if isinstance(result, (list, tuple)) and len(result) > 1 else result)")
@@ -200,11 +205,12 @@ else
   . folder_processing.sh "$unpack_folder" "$results_folder"
   cd "$current_dir"
   . photo_processing.sh "$unpack_folder" "$results_folder"
-  # cleanup files and folders
-  delete_folder "$unpack_folder"
   delete_folder "$missed_fits_folder"
   delete_file "$missed_fits_files"
-  delete_file "$tar_file"
-  #read -n 1 -s -r -p "Press any key to exit"
-  echo "Tar processing completed"
 fi
+# cleanup files and folders
+delete_folder "$unpack_folder"
+delete_file "$tar_file"
+#read -n 1 -s -r -p "Press any key to exit"
+echo "Tar processing completed"
+
