@@ -62,7 +62,7 @@ if [ -n "$ssh_host" ]; then
       read -n 1 -s -r -p "Press any key to continue"
       echo
     else
-      rsync --progress -e "ssh -p $ssh_port" "$ssh_host:$remote_archive_files/$tar_file_name "  "$archive_files"
+      rsync --progress -e "ssh -p $ssh_port" "$ssh_host:$remote_archive_files/$tar_file_name"  "$archive_files"
       tar_file="$archive_files/$tar_file_name"
     fi
 

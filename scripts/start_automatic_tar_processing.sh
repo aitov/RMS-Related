@@ -61,7 +61,7 @@ if [ -n "$ssh_host" ]; then
     # Print the list of processed archive file names
     for tar_file_name in "${processed_archives[@]}"; do
       echo "Processing $archive_file"
-      rsync --progress -e "ssh -p $ssh_port" "$ssh_host:$remote_archive_files/$tar_file_name "  "$archive_files"
+      rsync --progress -e "ssh -p $ssh_port" "$ssh_host:$remote_archive_files/$tar_file_name"  "$archive_files"
 
       tar_file="$archive_files/$tar_file_name"
       unpack_folder=${tar_file%"_detected.tar.bz2"}
@@ -303,5 +303,4 @@ if [ -n "$ssh_host" ]; then
 
     done
 fi
-
 
