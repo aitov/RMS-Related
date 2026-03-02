@@ -12,7 +12,7 @@ def run_cmd(args):
 
 # Camera bus number (should be set by user)
 I2C_BUS = '0'
-GX_SCRIPT = '/home/rms/source/raspberrypi_v4l2/gx_i2c_tools'
+GX_SCRIPT = '/home/rms/source/raspberrypi_v4l2/gx_i2c_tools/gx_mipi_i2c.sh'
 
 class CameraConfigGUI(tk.Tk):
     def __init__(self):
