@@ -102,6 +102,20 @@ class CameraConfigGUI(tk.Tk):
         ttk.Button(btn_frame, text='Reboot', command=self.reboot).pack(side='left', padx=5)
         ttk.Button(btn_frame, text='Apply', command=self.apply_params).pack(side='right', padx=5)
 
+    def extract_readonly_value(self, response):
+        # Remove 'Read ... is ' and keep only the value (first number, hex, or string after 'is')
+        import re
+        # Try to extract after 'is'
+        match = re.search(r'is ([^\n]+)', response)
+        if match:
+            value = match.group(1).strip()
+            # Remove trailing units (e.g., 'fps', 'us', 'K', etc.)
+            value = re.sub(r'\s*(fps|us|K|dB|kbps|\\u2103|k)$', '', value)
+            return value.strip()
+        # Fallback: extract last number or word
+        match = re.search(r'([\w\d\.]+)$', response)
+        return match.group(1) if match else response.strip()
+
     def add_basic_params(self, frame):
         params = [
             ('manufacturer', 'Manufacturer'),
@@ -122,14 +136,13 @@ class CameraConfigGUI(tk.Tk):
         for i, (cmd, label) in enumerate(params):
             ttk.Label(frame, text=label+':').grid(row=i, column=0, sticky='e', padx=5, pady=2)
             val = run_cmd([GX_SCRIPT, '-r', cmd, '-b', I2C_BUS])
-            lbl = ttk.Label(frame, text=val)
+            value = self.extract_readonly_value(val)
+            lbl = ttk.Label(frame, text=value)
             lbl.grid(row=i, column=1, sticky='w', padx=5, pady=2)
             self.basic_labels[cmd] = lbl
 
     def add_acq_params(self, frame):
-        # Make Image Acquisition section read-only
         params = [
-            ('imgacq', 'Image Acquisition'),
             ('workmode', 'Work Mode'),
             ('trgsrc', 'Trigger Source'),
             ('trgnum', 'Trigger Number'),
@@ -142,7 +155,8 @@ class CameraConfigGUI(tk.Tk):
         for i, (cmd, label) in enumerate(params):
             ttk.Label(frame, text=label+':').grid(row=i, column=0, sticky='e', padx=5, pady=2)
             val = run_cmd([GX_SCRIPT, '-r', cmd, '-b', I2C_BUS])
-            lbl = ttk.Label(frame, text=val)
+            value = self.extract_readonly_value(val)
+            lbl = ttk.Label(frame, text=value)
             lbl.grid(row=i, column=1, sticky='w', padx=5, pady=2)
             self.acq_labels[cmd] = lbl
 
