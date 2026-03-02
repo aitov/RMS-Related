@@ -58,6 +58,7 @@ if [ -n "$ssh_host" ]; then
         echo "Missed _processed_detected for $base, adding _detected"
       fi
     done
+    current_dir=$(pwd)
     # Print the list of processed archive file names
     for tar_file_name in "${processed_archives[@]}"; do
       echo "Processing $archive_file"
@@ -186,7 +187,7 @@ if [ -n "$ssh_host" ]; then
         create_folder "$processed_files"
         results_folder="$processed_files/$unpack_folder_name"
         create_folder "$results_folder"
-        current_dir=$(pwd)
+        cd "$current_dir"
         . folder_processing.sh "$unpack_folder" "$results_folder"
         cd "$current_dir"
         . photo_processing.sh "$unpack_folder" "$results_folder"
