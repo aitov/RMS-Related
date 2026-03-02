@@ -41,7 +41,7 @@ class CameraConfigGUI(tk.Tk):
         self.initial_imgproc_dual = {}
         self.initial_ioctrl = {}
         self.create_widgets()
-        self.after(1000, lambda: self.attributes('-topmost', False))
+        self.after(1000, lambda *args: self.attributes('-topmost', False))
 
     def create_widgets(self):
         # Main layout: notebook (with scrollable tabs) + fixed button frame
@@ -191,7 +191,8 @@ class CameraConfigGUI(tk.Tk):
                 for j, opt in enumerate(options):
                     ttk.Radiobutton(frame, text=str(opt), variable=var, value=str(opt)).grid(row=i, column=1+j, sticky='w')
             elif widget == 'slider':
-                var = tk.IntVar(value=int(val) if val.isdigit() else options[0])
+                parsed_val = parse_param_value(cmd, val)
+                var = tk.IntVar(value=parsed_val)
                 self.imgprop_vars[cmd] = var
                 self.initial_imgprop[cmd] = var.get()
                 slider = ttk.Scale(frame, from_=options[0], to=options[1], variable=var, orient='horizontal')
@@ -225,13 +226,13 @@ class CameraConfigGUI(tk.Tk):
             'gamma_index': (0, 10),
             'wdrparam': (0, 255),
             'sharppen': (0, 255),
-            'denoise2d': (0, 255),
-            'denoise3d': (0, 255),
+            'denoise_strength_2D': (0, 255),
+            'denoise_strength_3D': (0, 255),
             'saturation': (0, 255),
             'contrast': (0, 255),
             'hue': (0, 255),
             'ldc': (0, 255),
-            'dehaze': (0, 255),
+            'dehazeparam': (0, 255),
             'drc': (0, 255),
         }
         params = [
@@ -257,14 +258,14 @@ class CameraConfigGUI(tk.Tk):
             ('antiflicker', 'Anti-Flicker', 'radio', antiflicker_options),
             ('wdrparam', 'WDR Param', 'slider', param_ranges['wdrparam']),
             ('sharppen', 'Sharpen', 'slider', param_ranges['sharppen']),
-            ('denoise2d', 'Denoise 2D', 'slider', param_ranges['denoise2d']),
-            ('denoise3d', 'Denoise 3D', 'slider', param_ranges['denoise3d']),
+            ('denoise_strength_2D', 'Denoise 2D', 'slider', param_ranges['denoise_strength_2D']),
+            ('denoise_strength_3D', 'Denoise 3D', 'slider', param_ranges['denoise_strength_3D']),
             ('saturation', 'Saturation', 'slider', param_ranges['saturation']),
             ('contrast', 'Contrast', 'slider', param_ranges['contrast']),
             ('hue', 'Hue', 'slider', param_ranges['hue']),
             ('slowshutter', 'Slow Shutter', 'dual', (slowshutter_options, slowshutter_range)),
             ('ldc', 'LDC', 'slider', param_ranges['ldc']),
-            ('dehaze', 'Dehaze', 'slider', param_ranges['dehaze']),
+            ('dehazeparam', 'Dehaze', 'slider', param_ranges['dehazeparam']),
             ('drc', 'DRC', 'slider', param_ranges['drc']),
         ]
         self.imgproc_labels = {}
@@ -285,7 +286,8 @@ class CameraConfigGUI(tk.Tk):
                 for j, opt in enumerate(options):
                     ttk.Radiobutton(frame, text=str(opt), variable=var, value=str(opt)).grid(row=i, column=1+j, sticky='w')
             elif widget == 'slider':
-                var = tk.IntVar(value=int(val) if val.isdigit() else options[0])
+                parsed_val = parse_param_value(cmd, val)
+                var = tk.IntVar(value=parsed_val)
                 self.imgproc_vars[cmd] = var
                 self.initial_imgproc[cmd] = var.get()
                 slider = ttk.Scale(frame, from_=options[0], to=options[1], variable=var, orient='horizontal')
@@ -393,6 +395,60 @@ class CameraConfigGUI(tk.Tk):
             messagebox.showinfo('Apply Params', '\n'.join(results))
         else:
             messagebox.showinfo('Apply Params', 'No parameters changed.')
+
+def parse_param_value(param, response):
+    # Remove leading/trailing whitespace
+    response = response.strip()
+    # Map for compound values
+    if param in ['maxwh', 'minwh', 'curwh']:
+        # Extract width and height (first integer for width)
+        import re
+        match = re.search(r'(\d+)', response)
+        return int(match.group(1)) if match else 0
+    if param == 'antiflicker':
+        # Extract enable and freq
+        import re
+        enable = re.search(r'Anti_flicker_enable is (\d+)', response)
+        freq = re.search(r'Anti_flicker_Freq is (\d+)', response)
+        return int(enable.group(1)) if enable else 0
+    if param == 'wdrparam':
+        # Extract WDR_strength
+        import re
+        strength = re.search(r'WDR_strength is (\d+)', response)
+        return int(strength.group(1)) if strength else 0
+    if param == 'slowshutter':
+        # Extract both values
+        import re
+        shutter = re.search(r'SlowShutter is (\d+)', response)
+        gainth = re.search(r'SlowShutter_GainTh is (\d+)', response)
+        return (int(shutter.group(1)) if shutter else 0, int(gainth.group(1)) if gainth else 0)
+    if param == 'denoise_strength_2D':
+        import re
+        match = re.search(r'Denoise_strength_2D is\s*(\d+)', response)
+        return int(match.group(1)) if match else 0
+    if param == 'denoise_strength_3D':
+        import re
+        match = re.search(r'Denoise_strength_3D\s*is\s*(\d+)', response)
+        return int(match.group(1)) if match else 0
+    if param == 'dehazeparam':
+        import re
+        match = re.search(r'Dehaze_strength is (\d+)', response)
+        return int(match.group(1)) if match else 0
+    if param == 'drc':
+        import re
+        match = re.search(r'DRC_strength is (\d+)', response)
+        return int(match.group(1)) if match else 0
+    # General case: extract last integer or float
+    import re
+    matches = re.findall(r'(-?\d+\.\d+|-?\d+)', response)
+    if matches:
+        # For most, last value is the actual value
+        val = matches[-1]
+        if '.' in val:
+            return float(val)
+        else:
+            return int(val)
+    return response
 
 if __name__ == '__main__':
     app = CameraConfigGUI()
