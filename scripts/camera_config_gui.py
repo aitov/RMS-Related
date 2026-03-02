@@ -88,23 +88,22 @@ class CameraConfigGUI(tk.Tk):
         imgproc_frame = make_scrollable_tab(imgproc_tab)
         self.add_imgproc_params(imgproc_frame)
 
-        # 7.6 IO Control
-        ioctrl_tab = ttk.Frame(notebook)
-        notebook.add(ioctrl_tab, text='7.6 IO Control')
-        ioctrl_frame = make_scrollable_tab(ioctrl_tab)
-        self.add_ioctrl_params(ioctrl_frame)
-
         # Fixed button frame at the bottom
         btn_frame = ttk.Frame(self)
         btn_frame.pack(side='bottom', fill='x', pady=10)
         ttk.Button(btn_frame, text='Factory Param', command=self.factory_param).pack(side='left', padx=5)
         ttk.Button(btn_frame, text='Param Save', command=self.param_save).pack(side='left', padx=5)
         ttk.Button(btn_frame, text='Reboot', command=self.reboot).pack(side='left', padx=5)
+        ttk.Button(btn_frame, text='Refresh', command=self.refresh_params).pack(side='left', padx=5)
         ttk.Button(btn_frame, text='Apply', command=self.apply_params).pack(side='right', padx=5)
 
-    def extract_readonly_value(self, response):
-        # Remove 'Read ... is ' and keep only the value (first number, hex, or string after 'is')
+    def extract_readonly_value(self, response, param=None):
         import re
+        if param == 'temp':
+            # For temperature, extract the value ending with 'K'
+            match = re.search(r'is ([\d\.]+ K)', response)
+            if match:
+                return match.group(1)
         # Try to extract after 'is'
         match = re.search(r'is ([^\n]+)', response)
         if match:
@@ -112,7 +111,6 @@ class CameraConfigGUI(tk.Tk):
             # Remove trailing units (e.g., 'fps', 'us', 'K', etc.)
             value = re.sub(r'\s*(fps|us|K|dB|kbps|\\u2103|k)$', '', value)
             return value.strip()
-        # Fallback: extract last number or word
         match = re.search(r'([\w\d\.]+)$', response)
         return match.group(1) if match else response.strip()
 
@@ -136,7 +134,7 @@ class CameraConfigGUI(tk.Tk):
         for i, (cmd, label) in enumerate(params):
             ttk.Label(frame, text=label+':').grid(row=i, column=0, sticky='e', padx=5, pady=2)
             val = run_cmd([GX_SCRIPT, '-r', cmd, '-b', I2C_BUS])
-            value = self.extract_readonly_value(val)
+            value = self.extract_readonly_value(val, param=cmd)
             lbl = ttk.Label(frame, text=value)
             lbl.grid(row=i, column=1, sticky='w', padx=5, pady=2)
             self.basic_labels[cmd] = lbl
@@ -195,7 +193,8 @@ class CameraConfigGUI(tk.Tk):
             ttk.Label(frame, text=label+':').grid(row=i, column=0, sticky='e', padx=5, pady=2)
             val = run_cmd([GX_SCRIPT, '-r', cmd, '-b', I2C_BUS])
             if widget == 'label':
-                lbl = ttk.Label(frame, text=val)
+                value = self.extract_readonly_value(val)
+                lbl = ttk.Label(frame, text=value)
                 lbl.grid(row=i, column=1, sticky='w', padx=5, pady=2)
                 self.imgprop_labels[cmd] = lbl
             elif widget == 'radio':
@@ -220,6 +219,8 @@ class CameraConfigGUI(tk.Tk):
     def add_imgproc_params(self, frame):
         # Define options/ranges for known parameters
         expmode_options = ['Auto', 'Manual']
+        expmode_map = {'0': 'Manual', '2': 'Auto', 0: 'Manual', 2: 'Auto'}
+        expmode_reverse_map = {'Manual': '0', 'Auto': '2'}
         aestrategy_options = ['Speed', 'Accuracy']
         wbmode_options = ['Auto', 'Manual']
         antiflicker_options = ['Off', '50Hz', '60Hz']
@@ -256,7 +257,6 @@ class CameraConfigGUI(tk.Tk):
             ('aestrategy', 'AE Strategy', 'radio', aestrategy_options),
             ('metime', 'Manual Exposure Time', 'slider', param_ranges['metime']),
             ('aemaxtime', 'AE Max Time', 'slider', param_ranges['aemaxtime']),
-            ('exptime', 'Exposure Time', 'slider', param_ranges['exptime']),
             ('curgain', 'Current Gain', 'label', None),
             ('mgain', 'Manual Gain', 'slider', param_ranges['mgain']),
             ('aemaxgain', 'AE Max Gain', 'slider', param_ranges['aemaxgain']),
@@ -291,16 +291,26 @@ class CameraConfigGUI(tk.Tk):
             ttk.Label(frame, text=label+':').grid(row=i, column=0, sticky='e', padx=5, pady=2)
             val = run_cmd([GX_SCRIPT, '-r', cmd, '-b', I2C_BUS])
             if widget == 'label':
-                lbl = ttk.Label(frame, text=val)
+                value = self.extract_readonly_value(val)
+                lbl = ttk.Label(frame, text=value)
                 lbl.grid(row=i, column=1, sticky='w', padx=5, pady=2)
                 self.imgproc_labels[cmd] = lbl
             elif widget == 'radio':
-                parsed_val = parse_param_value(cmd, val)
-                var = tk.StringVar(value=str(parsed_val))
-                self.imgproc_vars[cmd] = var
-                self.initial_imgproc[cmd] = var.get()
-                for j, opt in enumerate(options):
-                    ttk.Radiobutton(frame, text=str(opt), variable=var, value=str(opt)).grid(row=i, column=1+j, sticky='w')
+                if cmd == 'expmode':
+                    parsed_val = parse_param_value(cmd, val)
+                    mapped_val = expmode_map.get(str(parsed_val), expmode_options[0])
+                    var = tk.StringVar(value=mapped_val)
+                    self.imgproc_vars[cmd] = var
+                    self.initial_imgproc[cmd] = var.get()
+                    for j, opt in enumerate(expmode_options):
+                        ttk.Radiobutton(frame, text=opt, variable=var, value=opt).grid(row=i, column=1+j, sticky='w')
+                else:
+                    parsed_val = parse_param_value(cmd, val)
+                    var = tk.StringVar(value=str(parsed_val))
+                    self.imgproc_vars[cmd] = var
+                    self.initial_imgproc[cmd] = var.get()
+                    for j, opt in enumerate(options):
+                        ttk.Radiobutton(frame, text=str(opt), variable=var, value=str(opt)).grid(row=i, column=1+j, sticky='w')
             elif widget == 'slider':
                 parsed_val = parse_param_value(cmd, val)
                 var = tk.IntVar(value=parsed_val)
@@ -327,41 +337,14 @@ class CameraConfigGUI(tk.Tk):
                 value_label = ttk.Label(frame, text=str(slider_var.get()))
                 value_label.grid(row=i, column=5, sticky='w', padx=5)
                 self.bind_slider_label(slider_var, value_label)
-
-    def add_ioctrl_params(self, frame):
-        param_ranges = {
-            'trgdelay': (0, 10000),
-            'trgedge': (0, 1),
-            'trgexp_delay': (0, 10000),
-            'outio1_rvs': (0, 1),
-        }
-        params = [
-            ('trgdelay', 'Trigger Delay', 'slider', param_ranges['trgdelay']),
-            ('trgedge', 'Trigger Edge', 'radio', ['Rising', 'Falling']),
-            ('trgexp_delay', 'Trigger Exposure Delay', 'slider', param_ranges['trgexp_delay']),
-            ('outio1_rvs', 'Out IO1 Reverse', 'radio', ['Off', 'On']),
-        ]
-        self.ioctrl_vars = {}
-        self.ioctrl_slider_labels = {}
-        for i, (cmd, label, widget, options) in enumerate(params):
-            ttk.Label(frame, text=label+':').grid(row=i, column=0, sticky='e', padx=5, pady=2)
-            val = run_cmd([GX_SCRIPT, '-r', cmd, '-b', I2C_BUS])
-            if widget == 'radio':
-                var = tk.StringVar(value=val)
-                self.ioctrl_vars[cmd] = var
-                self.initial_ioctrl[cmd] = var.get()
-                for j, opt in enumerate(options):
-                    ttk.Radiobutton(frame, text=str(opt), variable=var, value=str(opt)).grid(row=i, column=1+j, sticky='w')
-            elif widget == 'slider':
-                var = tk.IntVar(value=int(val) if val.isdigit() else options[0])
-                self.ioctrl_vars[cmd] = var
-                self.initial_ioctrl[cmd] = var.get()
-                slider = ttk.Scale(frame, from_=options[0], to=options[1], variable=var, orient='horizontal')
-                slider.grid(row=i, column=1, columnspan=2, sticky='we')
-                value_label = ttk.Label(frame, text=str(var.get()))
-                value_label.grid(row=i, column=3, sticky='w', padx=5)
-                self.ioctrl_slider_labels[cmd] = value_label
-                self.bind_slider_label(var, value_label)
+        self.expmode_reverse_map = expmode_reverse_map
+        # Add exptime as readonly label next to curgain
+        exptime_val = run_cmd([GX_SCRIPT, '-r', 'exptime', '-b', I2C_BUS])
+        exptime_value = self.extract_readonly_value(exptime_val)
+        ttk.Label(frame, text='Exposure Time:').grid(row=5, column=2, sticky='e', padx=5, pady=2)
+        exptime_lbl = ttk.Label(frame, text=exptime_value)
+        exptime_lbl.grid(row=5, column=3, sticky='w', padx=5, pady=2)
+        self.imgproc_labels['exptime'] = exptime_lbl
 
     def factory_param(self):
         out = run_cmd([GX_SCRIPT, '-w', 'factoryparam', '-b', I2C_BUS])
@@ -374,6 +357,60 @@ class CameraConfigGUI(tk.Tk):
     def reboot(self):
         out = run_cmd([GX_SCRIPT, '-w', 'reboot', '-b', I2C_BUS])
         messagebox.showinfo('Reboot', out)
+
+    def refresh_params(self):
+        # Basic Parameters
+        for cmd, lbl in self.basic_labels.items():
+            val = run_cmd([GX_SCRIPT, '-r', cmd, '-b', I2C_BUS])
+            value = self.extract_readonly_value(val)
+            lbl.config(text=value)
+        # Acquisition Parameters
+        for cmd, lbl in self.acq_labels.items():
+            val = run_cmd([GX_SCRIPT, '-r', cmd, '-b', I2C_BUS])
+            value = self.extract_readonly_value(val)
+            lbl.config(text=value)
+        # Image Properties
+        for cmd in self.imgprop_vars:
+            val = run_cmd([GX_SCRIPT, '-r', cmd, '-b', I2C_BUS])
+            if cmd in self.imgprop_slider_labels:
+                parsed_val = parse_param_value(cmd, val)
+                self.imgprop_vars[cmd].set(parsed_val)
+                self.imgprop_slider_labels[cmd].config(text=str(parsed_val))
+            else:
+                parsed_val = parse_param_value(cmd, val)
+                self.imgprop_vars[cmd].set(str(parsed_val))
+        for cmd, lbl in self.imgprop_labels.items():
+            val = run_cmd([GX_SCRIPT, '-r', cmd, '-b', I2C_BUS])
+            value = self.extract_readonly_value(val)
+            lbl.config(text=value)
+        # Image Processing
+        for cmd in self.imgproc_vars:
+            val = run_cmd([GX_SCRIPT, '-r', cmd, '-b', I2C_BUS])
+            if cmd in self.imgproc_slider_labels:
+                parsed_val = parse_param_value(cmd, val)
+                self.imgproc_vars[cmd].set(parsed_val)
+                self.imgproc_slider_labels[cmd].config(text=str(parsed_val))
+            elif cmd == 'expmode':
+                parsed_val = parse_param_value(cmd, val)
+                expmode_options = ['Auto', 'Manual']
+                expmode_map = {'0': 'Manual', '2': 'Auto', 0: 'Manual', 2: 'Auto'}
+                mapped_val = expmode_map.get(str(parsed_val), expmode_options[0])
+                self.imgproc_vars[cmd].set(mapped_val)
+            else:
+                parsed_val = parse_param_value(cmd, val)
+                self.imgproc_vars[cmd].set(str(parsed_val))
+        for cmd, lbl in self.imgproc_labels.items():
+            val = run_cmd([GX_SCRIPT, '-r', cmd, '-b', I2C_BUS])
+            value = self.extract_readonly_value(val)
+            lbl.config(text=value)
+        # Dual controls (slowshutter)
+        for cmd, (radio_var, slider_var) in self.imgproc_dual_vars.items():
+            val = run_cmd([GX_SCRIPT, '-r', cmd, '-b', I2C_BUS])
+            parsed_val = parse_param_value(cmd, val)
+            radio_val = parsed_val[0] if isinstance(parsed_val, tuple) else radio_var.get()
+            slider_val = parsed_val[1] if isinstance(parsed_val, tuple) else slider_var.get()
+            radio_var.set(radio_val)
+            slider_var.set(slider_val)
 
     def apply_params(self):
         cmds = []
@@ -388,19 +425,17 @@ class CameraConfigGUI(tk.Tk):
         # Image Processing
         for cmd in self.imgproc_vars:
             if self.imgproc_vars[cmd].get() != self.initial_imgproc[cmd]:
-                cmds.append([GX_SCRIPT, '-w', cmd, self.imgproc_vars[cmd].get(), '-b', I2C_BUS])
-                changes.append((cmd, str(self.imgproc_vars[cmd].get())))
+                value = self.imgproc_vars[cmd].get()
+                if cmd == 'expmode':
+                    value = self.expmode_reverse_map.get(value, '2')
+                cmds.append([GX_SCRIPT, '-w', cmd, value, '-b', I2C_BUS])
+                changes.append((cmd, str(value)))
         for cmd in self.imgproc_dual_vars:
             radio_var, slider_var = self.imgproc_dual_vars[cmd]
             initial_radio, initial_slider = self.initial_imgproc_dual[cmd]
             if radio_var.get() != initial_radio or slider_var.get() != initial_slider:
                 cmds.append([GX_SCRIPT, '-w', cmd, str(radio_var.get()), str(slider_var.get()), '-b', I2C_BUS])
                 changes.append((cmd, f"{radio_var.get()}, {slider_var.get()}"))
-        # IO Control
-        for cmd in self.ioctrl_vars:
-            if self.ioctrl_vars[cmd].get() != self.initial_ioctrl[cmd]:
-                cmds.append([GX_SCRIPT, '-w', cmd, self.ioctrl_vars[cmd].get(), '-b', I2C_BUS])
-                changes.append((cmd, str(self.ioctrl_vars[cmd].get())))
         # Print changes to console
         if changes:
             print("Parameters to be applied:")
