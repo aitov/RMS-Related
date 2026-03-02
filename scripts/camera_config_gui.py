@@ -185,7 +185,8 @@ class CameraConfigGUI(tk.Tk):
                 lbl.grid(row=i, column=1, sticky='w', padx=5, pady=2)
                 self.imgprop_labels[cmd] = lbl
             elif widget == 'radio':
-                var = tk.StringVar(value=val)
+                parsed_val = parse_param_value(cmd, val)
+                var = tk.StringVar(value=str(parsed_val))
                 self.imgprop_vars[cmd] = var
                 self.initial_imgprop[cmd] = var.get()
                 for j, opt in enumerate(options):
@@ -280,7 +281,8 @@ class CameraConfigGUI(tk.Tk):
                 lbl.grid(row=i, column=1, sticky='w', padx=5, pady=2)
                 self.imgproc_labels[cmd] = lbl
             elif widget == 'radio':
-                var = tk.StringVar(value=val)
+                parsed_val = parse_param_value(cmd, val)
+                var = tk.StringVar(value=str(parsed_val))
                 self.imgproc_vars[cmd] = var
                 self.initial_imgproc[cmd] = var.get()
                 for j, opt in enumerate(options):
@@ -297,9 +299,11 @@ class CameraConfigGUI(tk.Tk):
                 self.imgproc_slider_labels[cmd] = value_label
                 self.bind_slider_label(var, value_label)
             elif widget == 'dual':
-                # Dual control: radio + slider
-                radio_var = tk.IntVar(value=options[0][0])
-                slider_var = tk.IntVar(value=options[1][0])
+                parsed_val = parse_param_value(cmd, val)
+                radio_val = parsed_val[0] if isinstance(parsed_val, tuple) else options[0][0]
+                slider_val = parsed_val[1] if isinstance(parsed_val, tuple) else options[1][0]
+                radio_var = tk.IntVar(value=radio_val)
+                slider_var = tk.IntVar(value=slider_val)
                 self.imgproc_dual_vars[cmd] = (radio_var, slider_var)
                 self.initial_imgproc_dual[cmd] = (radio_var.get(), slider_var.get())
                 for j, opt in enumerate(options[0]):
