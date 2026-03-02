@@ -1,18 +1,23 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import subprocess
+import os
 
 # Helper to run shell command and get output
 def run_cmd(args):
     try:
-        result = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        # Replace first argument with GX_SCRIPT absolute path if it matches the script name
+        if args and os.path.basename(args[0]) == os.path.basename(GX_SCRIPT):
+            args = [GX_SCRIPT] + args[1:]
+        result = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, cwd=GX_SCRIPT_DIR)
         return result.stdout.strip()
     except Exception as e:
         return str(e)
 
 # Camera bus number (should be set by user)
-I2C_BUS = '0'
+I2C_BUS = '4'
 GX_SCRIPT = '/home/rms/source/raspberrypi_v4l2/gx_i2c_tools/gx_mipi_i2c.sh'
+GX_SCRIPT_DIR = os.path.dirname(GX_SCRIPT)
 
 class CameraConfigGUI(tk.Tk):
     def __init__(self):
