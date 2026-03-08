@@ -45,7 +45,7 @@ while True:
     # Draw the selection box on the preview
     cv2.rectangle(small_frame, (px - pd, py - pd), (px + pd, py + pd), (0, 255, 0), 1)
     cv2.drawMarker(small_frame, (px, py), (0, 0, 255), cv2.MARKER_CROSS, 10, 1)
-
+    cv2.circle(small_frame, (int(x * 640 / WIDTH), int(y * 360 / HEIGHT)), 10, (0, 255, 0), 2)
     cv2.imshow("Full Preview", small_frame)
 
     # High-precision crop for focusing
