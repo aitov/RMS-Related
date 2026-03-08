@@ -13,9 +13,9 @@ cap.set(cv2.CAP_PROP_FRAME_WIDTH, WIDTH)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, HEIGHT)
 
 # Manual V4L2 settings
-os.system(f"v4l2-ctl -d {DEVICE_ID} -c exposure_auto=1")
-os.system(f"v4l2-ctl -d {DEVICE_ID} -c exposure_absolute=1000")
-os.system(f"v4l2-ctl -d {DEVICE_ID} -c gain=200")
+# os.system(f"v4l2-ctl -d {DEVICE_ID} -c exposure_auto=1")
+# os.system(f"v4l2-ctl -d {DEVICE_ID} -c exposure_absolute=1000")
+# os.system(f"v4l2-ctl -d {DEVICE_ID} -c gain=200")
 
 # Variables for locking
 lock_x, lock_y = WIDTH // 2, HEIGHT // 2
