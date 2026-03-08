@@ -8,7 +8,7 @@ DEVICE_ID = 0
 WIDTH, HEIGHT = 1920, 1080
 FRAMES_TO_STACK = 40 # Number of frames for "Long Exposure" simulation
 
-cap = cv2.VideoCapture(DEVICE_ID)
+cap = cv2.VideoCapture("v4l2src device=/dev/video0 ! video/x-raw,format=UYVY, width=1920, height=1080,framerate=30/1 ! videoconvert ! appsink sync=1")
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, WIDTH)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, HEIGHT)
 
