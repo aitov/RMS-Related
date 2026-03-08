@@ -31,7 +31,7 @@ while True:
     x, y = max_loc
 
     # 2. CREATE PREVIEW (RESIZED)
-    small_frame = cv2.resize(frame, (640, 360))
+    small_frame = cv2.resize(frame, (WIDTH, HEIGHT))
 
     # 3. DRAW SELECTION BOX ON PREVIEW
     # We translate 1920x1080 coordinates to 640x360
