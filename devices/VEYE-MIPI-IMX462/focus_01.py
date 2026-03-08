@@ -44,8 +44,8 @@ while True:
         print(f"Locked on star at: {lock_x}, {lock_y}")
 
     # 2. Preparation for Preview
-    small_frame = cv2.resize(frame, (640, 360))
-    scale_x, scale_y = 640 / WIDTH, 360 / HEIGHT
+    small_frame = cv2.resize(frame, (WIDTH, HEIGHT))
+    scale_x, scale_y = WIDTH / WIDTH, HEIGHT / HEIGHT
     px, py = int(lock_x * scale_x), int(lock_y * scale_y)
 
     # Draw Marker and Box on Preview
