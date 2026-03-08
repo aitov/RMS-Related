@@ -33,6 +33,21 @@ while True:
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(blurred)
     x, y = max_loc
 
+    # Preview window (moved up to draw on it)
+    small_frame = cv2.resize(frame, (640, 360))
+
+    # Scale coordinates for the 640x360 preview
+    scale_x = 640 / WIDTH
+    scale_y = 360 / HEIGHT
+    px, py = int(x * scale_x), int(y * scale_y)
+    pd = int(50 * scale_x) # scaled crop box size
+
+    # Draw the selection box on the preview
+    cv2.rectangle(small_frame, (px - pd, py - pd), (px + pd, py + pd), (0, 255, 0), 1)
+    cv2.drawMarker(small_frame, (px, py), (0, 0, 255), cv2.MARKER_CROSS, 10, 1)
+
+    cv2.imshow("Full Preview", small_frame)
+
     # High-precision crop for focusing
     d = 50
     if d < x < WIDTH - d and d < y < HEIGHT - d:
