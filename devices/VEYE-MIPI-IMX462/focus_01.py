@@ -35,8 +35,8 @@ while True:
 
     # 3. DRAW SELECTION BOX ON PREVIEW
     # We translate 1920x1080 coordinates to 640x360
-    scale_x = 640 / WIDTH
-    scale_y = 360 / HEIGHT
+    scale_x = WIDTH / WIDTH
+    scale_y = HEIGHT / HEIGHT
     px, py = int(x * scale_x), int(y * scale_y)
     p_box = int(50 * scale_x) # 50px crop radius scaled down
 
