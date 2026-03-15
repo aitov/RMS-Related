@@ -150,4 +150,18 @@ Set to camera my config script:
 ```
 devices/VEYE-MIPI-IMX462/configure_camera.sh
 ```
+Process files with upload mode = 1
+``` ini
+; Full path to the external script
+external_script_path: /home/rms/source/RMS-Related/scripts/ProcessFolder.py
+; Name of the function in the external script which will be called
+external_function_name: processFilesTask
+```
+Process files with upload mode = 3
+``` ini
+; Full path to the external script
+external_script_path: /home/rms/source/RMS-Related/scripts/CreateFullArchive.py
+; Name of the function in the external script which will be called
+external_function_name: createFullArchive
+```
 
