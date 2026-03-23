@@ -97,7 +97,11 @@ def processMp4Files(capture_folder, source_folder, target_folder):
 
     config_files = [os.path.join(source_folder, '.config')]
     config = cr.loadConfigFromDirectory(config_files, 'notused')
-    associations = loadShowerAssociations(source_folder, config)
+    try:
+        associations = loadShowerAssociations(source_folder, config)
+    except Exception as e:
+        print("Error loading shower associations: {}".format(e))
+        associations = {}
 
     # convert all FR_*.bin files to mp4 in root folder
     convertToMp4(source_folder, config, associations)
