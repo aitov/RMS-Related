@@ -12,6 +12,33 @@ from RMS.ConfigReader import loadConfigFromDirectory
 
 import RMS.ConfigReader as cr
 
+import configparser
+
+def read_sftp_config(ini_path):
+    parser = configparser.ConfigParser()
+    parser.read(ini_path)
+    sftp_enabled = False
+    sftp_command = None
+    if 'SFTP' in parser:
+        section = parser['SFTP']
+        sftp_enabled = section.getboolean('enabled', fallback=False)
+        sftp_command = section.get('command', fallback=None)
+    return sftp_enabled, sftp_command
+
+def upload_archive_sftp(archive_path, sftp_command):
+    import subprocess
+    # Replace placeholder in command if present
+    cmd = sftp_command.replace('{archive}', archive_path)
+    print(f"Uploading archive via SFTP: {cmd}")
+    try:
+        result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
+        print("SFTP upload output:\n" + result.stdout)
+        print("SFTP upload completed successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"SFTP upload failed: {e.stderr}")
+        return False
+    return True
+
 
 def processFiles(captured_folder, source_folder, target_folder):
     print("Processing files in  : {}".format(source_folder))
@@ -26,6 +53,15 @@ def processFiles(captured_folder, source_folder, target_folder):
 
     archive_name = shutil.make_archive(os.path.join(target_folder, archive_name), 'bztar', target_folder)
     print("Archived to  : {}".format(archive_name))
+
+    # SFTP upload step
+    config_path = os.path.join(os.path.dirname(__file__), 'processing.ini')
+    sftp_enabled, sftp_command = read_sftp_config(config_path)
+    if sftp_enabled and sftp_command:
+        upload_archive_sftp(archive_name, sftp_command)
+    else:
+        print("SFTP upload not enabled or command not set in processing.ini.")
+
     shutil.rmtree(target_folder)
 
 
@@ -299,11 +335,28 @@ def missedFitsLimitReached(missed_fits_folder):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Process captured meteor files.')
-    parser.add_argument('captured_folder', type=str, help='Path to the captured folder')
-    parser.add_argument('source_folder', type=str, help='Path to the source folder to process')
-    parser.add_argument('target_folder', type=str, help='Path to the target folder to store processed files')
+    parser = argparse.ArgumentParser(description='Process captured meteor files or upload archive via SFTP.')
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--upload', action='store_true', help='Upload a specified archive via SFTP')
+    group.add_argument('--process', action='store_true', help='Process captured meteor files (default)')
+    parser.add_argument('args', nargs='*', help='Arguments: for --upload, path to archive; for --process, captured_folder source_folder target_folder')
 
-    args = parser.parse_args()
+    args_ns = parser.parse_args()
 
-    processFiles(args.captured_folder, args.source_folder, args.target_folder)
+    if args_ns.upload:
+        if not args_ns.args or len(args_ns.args) < 1:
+            print('Please provide the path to the archive to upload.')
+            sys.exit(1)
+        archive_path = args_ns.args[0]
+        config_path = os.path.join(os.path.dirname(__file__), 'processing.ini')
+        sftp_enabled, sftp_command = read_sftp_config(config_path)
+        if sftp_enabled and sftp_command:
+            upload_archive_sftp(archive_path, sftp_command)
+        else:
+            print('SFTP upload not enabled or command not set in processing.ini.')
+    else:
+        if len(args_ns.args) < 3:
+            print('Please provide captured_folder, source_folder, and target_folder.')
+            sys.exit(1)
+        captured_folder, source_folder, target_folder = args_ns.args[:3]
+        processFiles(captured_folder, source_folder, target_folder)
