@@ -37,3 +37,7 @@ for ssh_host in "${available_ssh_hosts_list[@]}"; do
     . start_tar_processing.sh
   fi
 done
+
+# After SSH host processing, process local tars
+. start_processing_local_tars.sh
+. download_remote_archives.sh
