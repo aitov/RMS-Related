@@ -273,7 +273,7 @@ def zipFile(file_path, target_folder):
 def runDetectionOnMissedFits(source_folder):
     missed_fits_folder = os.path.join(source_folder, 'missed_fits')
 
-    if not os.path.exists(missed_fits_folder):
+    if not os.path.exists(missed_fits_folder) or missedFitsLimitReached(missed_fits_folder):
         print('No missed_fits folder found, skipping detection on missed fits')
         return
 
