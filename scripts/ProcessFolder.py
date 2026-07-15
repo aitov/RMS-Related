@@ -14,30 +14,25 @@ import RMS.ConfigReader as cr
 
 import configparser
 
+QUEUE_FILE = os.path.expanduser("~/rms_upload_queue.txt")
+
 def read_sftp_config(ini_path):
     parser = configparser.ConfigParser()
     parser.read(ini_path)
     sftp_enabled = False
-    sftp_command = None
     if 'SFTP' in parser:
         section = parser['SFTP']
         sftp_enabled = section.getboolean('enabled', fallback=False)
-        sftp_command = section.get('command', fallback=None)
-    return sftp_enabled, sftp_command
+        upload_full = section.getboolean('upload_full', fallback=False)
+    return sftp_enabled
 
-def upload_archive_sftp(archive_path, sftp_command):
-    import subprocess
-    # Replace placeholder in command if present
-    cmd = sftp_command.replace('{archive}', archive_path)
-    print(f"Uploading archive via SFTP: {cmd}")
-    try:
-        result = subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
-        print("SFTP upload output:\n" + result.stdout)
-        print("SFTP upload completed successfully.")
-    except subprocess.CalledProcessError as e:
-        print(f"SFTP upload failed: {e.stderr}")
-        return False
-    return True
+def register_new_archive_for_upload(archive_path):
+    """Call this right after creating your archive in your RMS script.
+       It appends the file path to the queue instantly (takes milliseconds) and exits."""
+    if archive_path and os.path.exists(archive_path):
+        with open(QUEUE_FILE, "a") as f:
+            f.write(f"{archive_path}\n")
+        print(f"File {os.path.basename(archive_path)} added to the upload queue.")
 
 
 def processFiles(captured_folder, source_folder, target_folder):
@@ -56,9 +51,10 @@ def processFiles(captured_folder, source_folder, target_folder):
 
     # SFTP upload step
     config_path = os.path.join(os.path.dirname(__file__), 'processing.ini')
-    sftp_enabled, sftp_command = read_sftp_config(config_path)
-    if sftp_enabled and sftp_command:
-        upload_archive_sftp(archive_name, sftp_command)
+    sftp_enabled = read_sftp_config(config_path)
+    if sftp_enabled:
+        # Adding just to queue file, will be uploaded by demon process of RmsUploader.py
+        register_new_archive_for_upload(archive_name)
     else:
         print("SFTP upload not enabled or command not set in processing.ini.")
 
@@ -337,26 +333,13 @@ def missedFitsLimitReached(missed_fits_folder):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Process captured meteor files or upload archive via SFTP.')
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--upload', action='store_true', help='Upload a specified archive via SFTP')
     group.add_argument('--process', action='store_true', help='Process captured meteor files (default)')
     parser.add_argument('args', nargs='*', help='Arguments: for --upload, path to archive; for --process, captured_folder source_folder target_folder')
 
     args_ns = parser.parse_args()
 
-    if args_ns.upload:
-        if not args_ns.args or len(args_ns.args) < 1:
-            print('Please provide the path to the archive to upload.')
-            sys.exit(1)
-        archive_path = args_ns.args[0]
-        config_path = os.path.join(os.path.dirname(__file__), 'processing.ini')
-        sftp_enabled, sftp_command = read_sftp_config(config_path)
-        if sftp_enabled and sftp_command:
-            upload_archive_sftp(archive_path, sftp_command)
-        else:
-            print('SFTP upload not enabled or command not set in processing.ini.')
-    else:
-        if len(args_ns.args) < 3:
-            print('Please provide captured_folder, source_folder, and target_folder.')
-            sys.exit(1)
-        captured_folder, source_folder, target_folder = args_ns.args[:3]
-        processFiles(captured_folder, source_folder, target_folder)
+    if len(args_ns.args) < 3:
+        print('Please provide captured_folder, source_folder, and target_folder.')
+        sys.exit(1)
+    captured_folder, source_folder, target_folder = args_ns.args[:3]
+    processFiles(captured_folder, source_folder, target_folder)

@@ -7,15 +7,26 @@ from RMS.ArchiveDetections import selectFiles, archiveDir
 from RMS.ConfigReader import loadConfigFromDirectory
 from ProcessFolder import processFiles
 import configparser
+QUEUE_FILE = os.path.expanduser("~/rms_upload_queue.txt")
 
 config_defaults = {}
+sftp_config = {}
 config_path = os.path.join(os.path.dirname(__file__), 'processing.ini')
 if os.path.exists(config_path):
     parser = configparser.ConfigParser()
     parser.read(config_path)
     if parser.sections():
        config_defaults.update(parser[parser.sections()[0]])
+       if 'SFTP' in parser:
+           sftp_config.update(parser['SFTP'])
 
+def register_new_archive_for_upload(archive_path):
+    """Call this right after creating your archive in your RMS script.
+       It appends the file path to the queue instantly (takes milliseconds) and exits."""
+    if archive_path and os.path.exists(archive_path):
+        with open(QUEUE_FILE, "a") as f:
+            f.write(f"{archive_path}\n")
+        print(f"File {os.path.basename(archive_path)} added to the upload queue.")
 
 def createFullArchive(captured_night_dir, archived_night_dir, config):
     delete_folder = boolValue(config_defaults.get('delete_folder', 'false'))
@@ -54,6 +65,13 @@ def createFullArchiveInteral(captured_night_dir, archived_night_dir, config, del
 
     if delete_folder:
         shutil.rmtree(full_archive_dir)
+
+    # upload full archive if enabled in processing.ini (for fast internet)
+    sftp_enabled = boolValue(sftp_config.get('enabled', 'false'))
+    upload_full = boolValue(sftp_config.get('upload_full', 'false'))
+    if sftp_enabled and upload_full:
+       register_new_archive_for_upload(archive_name)
+
     # Release lock file so RMS is authorized to reboot, if needed
     os.remove(lockfile)
 
