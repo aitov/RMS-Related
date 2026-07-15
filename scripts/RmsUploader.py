@@ -172,6 +172,7 @@ def main():
                 time.sleep(RETRY_DELAY)
                 continue
             successful_files = []
+            full_subdir_ready = False
             
             for local_file in files:
                 if not os.path.exists(local_file):
@@ -182,7 +183,18 @@ def main():
                 filename = os.path.basename(local_file)
                 print(f"Syncing: {filename}...")
 
-                if upload_file_with_resume(sftp, local_file, filename):
+                remote_filename = filename
+                if "_full_" in filename:
+                    if not full_subdir_ready:
+                        try:
+                            sftp.stat("full")
+                        except IOError:
+                            sftp.mkdir("full")
+                            print("Created remote subfolder 'full'.")
+                        full_subdir_ready = True
+                    remote_filename = f"full/{filename}"
+
+                if upload_file_with_resume(sftp, local_file, remote_filename):
                     successful_files.append(local_file)
                     # OPTIONAL: Uncomment the line below to delete the archive from the RPi
                     # SD card immediately after a successful upload to your 4TB disk
