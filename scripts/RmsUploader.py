@@ -66,6 +66,16 @@ def upload_file_with_resume(sftp, local_path, remote_path):
     part_remote_path = remote_path + ".part"
 
     try:
+        # Check if the final file already exists on the server
+        final_size = sftp.stat(remote_path).st_size
+        if final_size == local_size:
+            print(f"File '{remote_path}' already exists on the server with identical size. Skipping upload.")
+            return True
+    except Exception:
+        # If the file does not exist, we can proceed with the upload
+        pass
+
+    try:
         # Check if a partially uploaded file already exists on the Proxmox server
         remote_size = sftp.stat(part_remote_path).st_size
     except IOError:
