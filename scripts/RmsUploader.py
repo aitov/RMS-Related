@@ -18,6 +18,7 @@ LOCK_FILE = "/tmp/rms_uploader.lock"
 NET_TIMEOUT = 15      # Connection drop threshold if the server doesn't respond in 15 seconds
 RETRY_DELAY = 300     # Pause in seconds (5 minutes) before retrying after a network failure
 IDLE_DELAY = 60       # How often (in seconds) to poll the queue when the camera is idle
+STARTUP_DELAY = 120   # One-time startup wait (2 minutes) to allow network after boot
 
 
 def read_sftp_config(ini_path):
@@ -116,6 +117,8 @@ def main():
         sys.exit(0)
 
     print("Background upload daemon successfully started. Monitoring queue...")
+    print(f"Waiting {STARTUP_DELAY} seconds before first network attempt...")
+    time.sleep(STARTUP_DELAY)
 
     # INFINITE MONITORING LOOP (Runs continuously until RPi reboots or shuts down)
     while True:
