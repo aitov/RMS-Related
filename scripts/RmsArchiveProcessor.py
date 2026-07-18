@@ -130,6 +130,156 @@ def copy_meteor_stack(unpacked_day_dir, base_camera_dir):
         else:
             print(f"Stacks: File {stack_file} already exists in central stacks directory. Skipping.")
 
+import os
+import shutil
+import subprocess
+
+def process_and_backup_csv(folder_name, results_folder, local_csv_dir, csv_shared_folders="", use_dropbox=False):
+    """
+    Processes daily RMS CSV files, manages a local deduplicated monthly archive,
+    and optionally distributes backups to network shares and Dropbox.
+    """
+    # 1. Parse station metadata and dates from the folder name (e.g., UA0001_20260718_...)
+    try:
+        station_name = folder_name[0:6]
+        year = folder_name[7:11]
+        month = folder_name[11:13]
+    except IndexError:
+        print(f"[CSV] Error: Invalid folder name format: {folder_name}")
+        return
+
+    # Define path to the source daily CSV file
+    csv_file_path = os.path.join(results_folder, "rms", f"{folder_name}.csv")
+
+    # Verify source file existence
+    if not os.path.exists(csv_file_path):
+        print(f"[CSV] Source file not found: {csv_file_path}")
+        return
+
+    # Skip empty or header-only files (less than 100 bytes)
+    if os.path.getsize(csv_file_path) < 100:
+        print(f"[CSV] File is empty or header-only, skipping: {csv_file_path}")
+        return
+
+    # Read the content of the daily file for deduplicated merging
+    try:
+        with open(csv_file_path, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+    except IOError as e:
+        print(f"[CSV] Error reading source file {csv_file_path}: {e}")
+        return
+
+    if not lines:
+        return
+
+    header = lines
+    data_lines = lines[1:]
+
+    # -------------------------------------------------------------------------
+    # STEP 0: MANDATORY LOCAL BACKUP & MONOLITHIC MERGE (Perfect for testing!)
+    # -------------------------------------------------------------------------
+    local_monthly_file_path = None
+    try:
+        # Create local target structure: LOCAL_CSV_DIR/2026/monthly/07
+        local_year_dir = os.path.join(local_csv_dir, year)
+        local_monthly_dir = os.path.join(local_year_dir, "monthly", month)
+        os.makedirs(local_monthly_dir, exist_ok=True)
+
+        # Copy the raw daily CSV file locally
+        local_day_csv = os.path.join(local_year_dir, f"{folder_name}.csv")
+        if not os.path.exists(local_day_csv):
+            shutil.copy2(csv_file_path, local_day_csv)
+            print(f"[CSV Local] Successfully backed up daily file: {local_day_csv}")
+        else:
+            print(f"[CSV Local] Daily file already exists: {local_day_csv}. Merging data anyway.")
+
+        # Smart merge into local monthly report
+        local_monthly_file_path = os.path.join(local_monthly_dir, f"{year}_{month}_{station_name}.csv")
+
+        if os.path.exists(local_monthly_file_path):
+            with open(local_monthly_file_path, "r", encoding="utf-8") as mf:
+                existing_lines = mf.readlines()
+            existing_set = set(line.strip() for line in existing_lines)
+
+            with open(local_monthly_file_path, "a", encoding="utf-8") as mf:
+                for line in data_lines:
+                    if line.strip() not in existing_set:
+                        mf.write(line)
+            print(f"[CSV Local] Data appended to monthly report: {local_monthly_file_path}")
+        else:
+            with open(local_monthly_file_path, "w", encoding="utf-8") as mf:
+                mf.write(header)
+                mf.writelines(data_lines)
+            print(f"[CSV Local] Created new monolithic monthly report: {local_monthly_file_path}")
+
+    except Exception as e:
+        print(f"[CSV Local] Critical error during local processing: {e}")
+        # If local step fails, we shouldn't rely on local paths for network/cloud replication
+        local_monthly_file_path = None
+
+    # -------------------------------------------------------------------------
+    # STEP 2: NETWORK STORAGE ENDPOINTS (Mac mini / Time Capsule)
+    # -------------------------------------------------------------------------
+    shared_folder_list = [folder.strip() for folder in csv_shared_folders.split(",") if folder.strip()]
+    last_successful_monthly_path = local_monthly_file_path
+
+    for shared_folder in shared_folder_list:
+        if not os.path.isdir(shared_folder):
+            print(f"[CSV Network] Target share is offline: {shared_folder}. Skipping.")
+            continue
+
+        try:
+            target_year_dir = os.path.join(shared_folder, year)
+            os.makedirs(target_year_dir, exist_ok=True)
+
+            # Copy daily file to share
+            target_day_csv = os.path.join(target_year_dir, f"{folder_name}.csv")
+            shutil.copy2(csv_file_path, target_day_csv)
+            print(f"[CSV Network] Successfully backed up daily file to share: {target_day_csv}")
+
+            # Smart merge into share monthly report
+            monthly_dir = os.path.join(target_year_dir, "monthly", month)
+            os.makedirs(monthly_dir, exist_ok=True)
+            network_monthly_file_path = os.path.join(monthly_dir, f"{year}_{month}_{station_name}.csv")
+
+            if os.path.exists(network_monthly_file_path):
+                with open(network_monthly_file_path, "r", encoding="utf-8") as mf:
+                    existing_lines = mf.readlines()
+                existing_set = set(line.strip() for line in existing_lines)
+
+                with open(network_monthly_file_path, "a", encoding="utf-8") as mf:
+                    for line in data_lines:
+                        if line.strip() not in existing_set:
+                            mf.write(line)
+                print(f"[CSV Network] Data appended to share monthly report: {network_monthly_file_path}")
+            else:
+                with open(network_monthly_file_path, "w", encoding="utf-8") as mf:
+                    mf.write(header)
+                    mf.writelines(data_lines)
+                print(f"[CSV Network] Created new monolithic share report: {network_monthly_file_path}")
+
+            # Use network path as the source for Dropbox if available
+            last_successful_monthly_path = network_monthly_file_path
+
+        except Exception as e:
+            print(f"[CSV Network] Error processing share {shared_folder}: {e}")
+
+    # -------------------------------------------------------------------------
+    # STEP 3: CLOUD BACKUP VIA DBXCLI
+    # -------------------------------------------------------------------------
+    if use_dropbox and last_successful_monthly_path:
+        dropbox_dir = f"/RMS_BKP/{year}/monthly/{month}"
+        dropbox_file_path = f"{dropbox_dir}/{year}_{month}_{station_name}.csv"
+
+        print(f"[Dropbox] Syncing updated monthly report to cloud storage...")
+        cmd = ["dbxcli", "put", last_successful_monthly_path, dropbox_file_path]
+
+        try:
+            subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+            print(f"[Dropbox] Upload sequence completed: {dropbox_file_path}")
+        except subprocess.CalledProcessError as e:
+            print(f"[Dropbox] Execution error with dbxcli interface: {e.stderr.strip()}")
+
 def main():
     # --- CRON OVERLAP PROTECTION ---
     lock_f = open(LOCK_FILE, "w")
@@ -204,10 +354,10 @@ def main():
         if extraction_success:
             print("Enforcing group write permissions (775/664) for extracted files...")
             try:
-                # Открываем запись на саму папку дня
+                # Change permissions of the unpacked directory itself
                 os.chmod(final_local_unpacked_dir, 0o775)
 
-                # Проходимся по всему содержимому и открываем запись группе
+                # Change permissions recursively for all subdirectories and files
                 for root, dirs, files in os.walk(final_local_unpacked_dir):
                     for d in dirs:
                         os.chmod(os.path.join(root, d), 0o775)
@@ -217,41 +367,31 @@ def main():
                 print(f"Warning: Failed to enforce permissions: {e}")
 
             copy_meteor_stack(final_local_unpacked_dir, base_camera_dir)
-            # Scan for CSV files inside the freshly extracted folder
-            for root, dirs, files in os.walk(final_local_unpacked_dir):
-                for file in files:
-                    if file.startswith("."):
-                        continue
 
-                    # if file.lower().endswith(".csv"):
-                    #     csv_src_path = os.path.join(root, file)
-                    #
-                    #     # Always replicate CSV locally to the 4TB disk
-                    #     local_csv_target = os.path.join(LOCAL_CSV_DIR, file)
-                    #     if not os.path.exists(local_csv_target):
-                    #         shutil.copy2(csv_src_path, local_csv_target)
-                    #     else:
-                    #         print(f"CSV: {file} already exists locally. Skipping.")
-                    #
-                    #     # Replicate CSV to Dropbox Cloud (if enabled)
-                    #     if USE_DROPBOX:
-                    #         upload_to_dropbox(csv_src_path)
-                    #
-                    #     # Replicate CSV to Time Capsule (if enabled and online)
-                    #     if USE_TIME_CAPSULE and tc_online:
-                    #         tc_csv_dir = os.path.join(TIME_CAPSULE_DIR, "pi/CSV/Meteors.ua/Alex_Aitov")
-                    #         tc_csv_target = os.path.join(tc_csv_dir, file)
-                    #         if not os.path.exists(tc_csv_target):
-                    #             os.makedirs(tc_csv_dir, exist_ok=True)
-                    #             shutil.copy2(csv_src_path, tc_csv_target)
-                    #
-                    #     # Replicate CSV to Mac Mini (if enabled and online)
-                    #     if USE_MAC_MINI and mac_online:
-                    #         mac_csv_dir = os.path.join(MAC_MINI_DIR, "pi/CSV/Meteors.ua/Alex_Aitov")
-                    #         mac_csv_target = os.path.join(mac_csv_dir, file)
-                    #         if not os.path.exists(mac_csv_target):
-                    #             os.makedirs(mac_csv_dir, exist_ok=True)
-                    #             shutil.copy2(csv_src_path, mac_csv_target)
+            # 2. Process and backup CSV files (Replaces the old commented block)
+            # Extract the raw folder name (e.g., "UA0001_20260718_123456") from the full path
+            extracted_folder_name = os.path.basename(os.path.normpath(final_local_unpacked_dir))
+
+            # Prepare the list of active network shares based on your config toggles
+            active_shares = []
+            if USE_MAC_MINI:
+                active_shares.append(MAC_MINI_DIR)
+            if USE_TIME_CAPSULE:
+                active_shares.append(TIME_CAPSULE_DIR)
+
+            # Join them into a comma-separated string for our processing function
+            csv_shared_folders_str = ",".join(active_shares)
+
+            print(f"[Main] Launching CSV pipeline for folder: {extracted_folder_name}")
+
+            # Call the upgraded function including LOCAL_CSV_DIR
+            process_and_backup_csv(
+                folder_name=extracted_folder_name,
+                results_folder=base_camera_dir,
+                local_csv_dir=LOCAL_CSV_DIR,                # Added local destination path
+                csv_shared_folders=csv_shared_folders_str,  # Will be empty string "" if both toggles are False
+                use_dropbox=USE_DROPBOX                     # Will be False during initial test
+            )
 
             # 3. Replicate the whole unpacked directory to network nodes
             if USE_TIME_CAPSULE and tc_online:
