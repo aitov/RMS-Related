@@ -115,6 +115,9 @@ def main():
 
     # Scan the root of uploads directory
     for filename in os.listdir(SRC_DIR):
+        if filename.startswith("."):
+            continue
+
         if not filename.endswith("_processed_detected.tar.bz2") or filename.endswith(".part"):
             continue
 
@@ -157,6 +160,9 @@ def main():
             # Scan for CSV files inside the freshly extracted folder
             for root, dirs, files in os.walk(final_local_unpacked_dir):
                 for file in files:
+                    if file.startswith("."):
+                        continue
+
                     if file.lower().endswith(".csv"):
                         csv_src_path = os.path.join(root, file)
 
