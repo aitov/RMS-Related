@@ -131,18 +131,25 @@ def main():
         cam_name, year, month = parsed_data
         relative_target_path = os.path.join(year, month, cam_name)
 
-        # Exact local destination for unpacked data
-        final_local_unpacked_dir = os.path.join(LOCAL_DATA_ROOT, relative_target_path)
-        os.makedirs(final_local_unpacked_dir, exist_ok=True)
+        # : pi/data/2026/07/UA000A
+        base_camera_dir = os.path.join(LOCAL_DATA_ROOT, relative_target_path)
+
+        # Extract from  UA000A_20260716_184742_250666_processed_detected.tar.bz2
+        # folder name UA000A_20260716_184742_250666
+        folder_name_only = filename.replace("_processed_detected.tar.bz2", "")
+
+        # Final unpacked directory path: pi/data/2026/07/UA000A/UA000A_20260716_184742_250666
+        final_local_unpacked_dir = os.path.join(base_camera_dir, folder_name_only)
 
         print(f"\nProcessing archive: {filename}")
 
-        # --- 1. LOCAL UNPACKING (FIRST TASK) ---
+        # check if already unpacked for this specific day
         if os.path.exists(final_local_unpacked_dir) and os.listdir(final_local_unpacked_dir):
-            print(f"Directory {final_local_unpacked_dir} already exists and is not empty. Skipping extraction.")
+            print(f"Directory for this specific day '{final_local_unpacked_dir}' already exists and is not empty. Skipping extraction.")
             extraction_success = True
         else:
-            print(f"Extracting results to local HDD: {final_local_unpacked_dir}")
+            print(f"Creating day directory and extracting results to: {final_local_unpacked_dir}")
+            os.makedirs(final_local_unpacked_dir, exist_ok=True)
             try:
                 with tarfile.open(local_file_path, "r:bz2") as tar:
                     tar.extractall(path=final_local_unpacked_dir)
