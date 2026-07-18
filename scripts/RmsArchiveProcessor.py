@@ -202,6 +202,20 @@ def main():
         sync_to_mac_done = False
 
         if extraction_success:
+            print("Enforcing group write permissions (775/664) for extracted files...")
+            try:
+                # Открываем запись на саму папку дня
+                os.chmod(final_local_unpacked_dir, 0o775)
+
+                # Проходимся по всему содержимому и открываем запись группе
+                for root, dirs, files in os.walk(final_local_unpacked_dir):
+                    for d in dirs:
+                        os.chmod(os.path.join(root, d), 0o775)
+                    for f in files:
+                        os.chmod(os.path.join(root, f), 0o664)
+            except Exception as e:
+                print(f"Warning: Failed to enforce permissions: {e}")
+
             copy_meteor_stack(final_local_unpacked_dir, base_camera_dir)
             # Scan for CSV files inside the freshly extracted folder
             for root, dirs, files in os.walk(final_local_unpacked_dir):
