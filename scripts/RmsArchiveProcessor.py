@@ -131,6 +131,7 @@ def copy_meteor_stack(unpacked_day_dir, base_camera_dir):
             print(f"Stacks: File {stack_file} already exists in central stacks directory. Skipping.")
 
 def main():
+    os.umask(2)
     # --- CRON OVERLAP PROTECTION ---
     lock_f = open(LOCK_FILE, "w")
     try:
