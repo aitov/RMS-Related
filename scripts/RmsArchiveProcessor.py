@@ -115,7 +115,7 @@ def main():
 
     # Scan the root of uploads directory
     for filename in os.listdir(SRC_DIR):
-        if not filename.endswith("_processed_detected.tar") or filename.endswith(".part"):
+        if not filename.endswith("_processed_detected.tar.bz2") or filename.endswith(".part"):
             continue
 
         local_file_path = os.path.join(SRC_DIR, filename)
@@ -141,7 +141,7 @@ def main():
         else:
             print(f"Extracting results to local HDD: {final_local_unpacked_dir}")
             try:
-                with tarfile.open(local_file_path, "r:") as tar:
+                with tarfile.open(local_file_path, "r:bz2") as tar:
                     tar.extractall(path=final_local_unpacked_dir)
                 extraction_success = True
             except Exception as e:
