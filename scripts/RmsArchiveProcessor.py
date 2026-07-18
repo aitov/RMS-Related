@@ -131,7 +131,6 @@ def copy_meteor_stack(unpacked_day_dir, base_camera_dir):
             print(f"Stacks: File {stack_file} already exists in central stacks directory. Skipping.")
 
 def main():
-    os.umask(2)
     # --- CRON OVERLAP PROTECTION ---
     lock_f = open(LOCK_FILE, "w")
     try:
@@ -193,19 +192,6 @@ def main():
                 with tarfile.open(local_file_path, "r:bz2") as tar:
                     tar.extractall(path=final_local_unpacked_dir)
                 extraction_success = True
-                # need add permission for group to modify files by another users from samba
-                print("Enforcing group write permissions (775/664) for extracted files...")
-                for root, dirs, files in os.walk(final_local_unpacked_dir):
-                    for d in dirs:
-                        try:
-                            os.chmod(os.path.join(root, d), 0o775)
-                        except Exception:
-                            pass
-                    for f in files:
-                        try:
-                            os.chmod(os.path.join(root, f), 0o664)
-                        except Exception:
-                            pass
             except Exception as e:
                 print(f"Extraction failed for {filename}: {e}")
                 extraction_success = False
