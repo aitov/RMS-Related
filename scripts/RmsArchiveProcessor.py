@@ -193,6 +193,19 @@ def main():
                 with tarfile.open(local_file_path, "r:bz2") as tar:
                     tar.extractall(path=final_local_unpacked_dir)
                 extraction_success = True
+                # need add permission for group to modify files by another users from samba
+                print("Enforcing group write permissions (775/664) for extracted files...")
+                for root, dirs, files in os.walk(final_local_unpacked_dir):
+                    for d in dirs:
+                        try:
+                            os.chmod(os.path.join(root, d), 0o775)
+                        except Exception:
+                            pass
+                    for f in files:
+                        try:
+                            os.chmod(os.path.join(root, f), 0o664)
+                        except Exception:
+                            pass
             except Exception as e:
                 print(f"Extraction failed for {filename}: {e}")
                 extraction_success = False
