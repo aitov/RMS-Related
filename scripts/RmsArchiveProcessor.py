@@ -134,7 +134,7 @@ import os
 import shutil
 import subprocess
 
-def process_and_backup_csv(folder_name, results_folder, local_csv_dir, csv_shared_folders="", use_dropbox=False):
+def process_and_backup_csv(folder_name, final_local_unpacked_dir, local_csv_dir, csv_shared_folders="", use_dropbox=False):
     """
     Processes daily RMS CSV files, manages a local deduplicated monthly archive,
     and optionally distributes backups to network shares and Dropbox.
@@ -148,8 +148,8 @@ def process_and_backup_csv(folder_name, results_folder, local_csv_dir, csv_share
         print(f"[CSV] Error: Invalid folder name format: {folder_name}")
         return
 
-    # Define path to the source daily CSV file
-    csv_file_path = os.path.join(results_folder, "rms", f"{folder_name}.csv")
+    # Define path directly inside the unpacked day directory
+    csv_file_path = os.path.join(final_local_unpacked_dir, "rms", f"{folder_name}.csv")
 
     # Verify source file existence
     if not os.path.exists(csv_file_path):
@@ -172,11 +172,11 @@ def process_and_backup_csv(folder_name, results_folder, local_csv_dir, csv_share
     if not lines:
         return
 
-    header = lines
+    header = lines[0]
     data_lines = lines[1:]
 
     # -------------------------------------------------------------------------
-    # STEP 0: MANDATORY LOCAL BACKUP & MONOLITHIC MERGE (Perfect for testing!)
+    # STEP 0: MANDATORY LOCAL BACKUP & MONOLITHIC MERGE
     # -------------------------------------------------------------------------
     local_monthly_file_path = None
     try:
@@ -387,10 +387,10 @@ def main():
             # Call the upgraded function including LOCAL_CSV_DIR
             process_and_backup_csv(
                 folder_name=extracted_folder_name,
-                results_folder=base_camera_dir,
-                local_csv_dir=LOCAL_CSV_DIR,                # Added local destination path
-                csv_shared_folders=csv_shared_folders_str,  # Will be empty string "" if both toggles are False
-                use_dropbox=USE_DROPBOX                     # Will be False during initial test
+                final_local_unpacked_dir=final_local_unpacked_dir, # Passed directly
+                local_csv_dir=LOCAL_CSV_DIR,
+                csv_shared_folders=csv_shared_folders_str,
+                use_dropbox=USE_DROPBOX
             )
 
             # 3. Replicate the whole unpacked directory to network nodes
