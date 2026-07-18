@@ -56,7 +56,7 @@ def is_mac_mini_online():
 
 def parse_archive_name(filename):
     """Parses standard naming: UA0003_20260717_184607_759092_processed_detected.tar"""
-    match = re.match(r"^(UA\d+)_(\d{4})(\d{2})\d+_", filename)
+    match = re.match(r"^(UA\w+)_(\d{4})(\d{2})\d+_", filename)
     if match:
         return match.group(1), match.group(2), match.group(3) # cam_name, year, month
     return None
