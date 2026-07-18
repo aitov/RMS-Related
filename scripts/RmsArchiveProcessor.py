@@ -92,6 +92,44 @@ def sync_directory(src, dest):
         print(f"Failed to sync directory from {src} to {dest}: {e}")
         return False
 
+def copy_meteor_stack(unpacked_day_dir, base_camera_dir):
+    """
+    Finds a meteor stack image (_meteors.png/jpg) inside the 'meteors' folder
+    of the freshly unpacked day and copies it to the camera's central 'stacks' directory.
+    """
+    meteors_folder = os.path.join(unpacked_day_dir, "meteors")
+    if not os.path.exists(meteors_folder) or not os.path.isdir(meteors_folder):
+        print("No 'meteors' subdirectory found in the extracted results. Skipping stack copy.")
+        return
+
+    # Create the central 'stacks' folder on the upper camera level
+    stacks_target_dir = os.path.join(base_camera_dir, "stacks")
+
+    # Look for files ending with _meteors.png or _meteors.jpg inside the meteors folder
+    stack_file = None
+    try:
+        for file in os.listdir(meteors_folder):
+            if file.lower().endswith("_meteors.png") or file.lower().endswith("_meteors.jpg"):
+                stack_file = file
+                break  # We only need the first matching stack file (0 or 1 expected)
+    except Exception as e:
+        print(f"Failed to scan meteors folder: {e}")
+        return
+
+    if stack_file:
+        src_stack_path = os.path.join(meteors_folder, stack_file)
+        dst_stack_path = os.path.join(stacks_target_dir, stack_file)
+
+        if not os.path.exists(dst_stack_path):
+            try:
+                os.makedirs(stacks_target_dir, exist_ok=True)
+                print(f"Stacks: Copying stack index file -> {stack_file}")
+                shutil.copy2(src_stack_path, dst_stack_path)
+            except Exception as e:
+                print(f"Failed to copy stack file to {stacks_target_dir}: {e}")
+        else:
+            print(f"Stacks: File {stack_file} already exists in central stacks directory. Skipping.")
+
 def main():
     # --- CRON OVERLAP PROTECTION ---
     lock_f = open(LOCK_FILE, "w")
@@ -164,6 +202,7 @@ def main():
         sync_to_mac_done = False
 
         if extraction_success:
+            copy_meteor_stack(final_local_unpacked_dir, base_camera_dir)
             # Scan for CSV files inside the freshly extracted folder
             for root, dirs, files in os.walk(final_local_unpacked_dir):
                 for file in files:
