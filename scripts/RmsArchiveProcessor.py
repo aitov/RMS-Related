@@ -163,35 +163,35 @@ def main():
                     if file.startswith("."):
                         continue
 
-                    if file.lower().endswith(".csv"):
-                        csv_src_path = os.path.join(root, file)
-
-                        # Always replicate CSV locally to the 4TB disk
-                        local_csv_target = os.path.join(LOCAL_CSV_DIR, file)
-                        if not os.path.exists(local_csv_target):
-                            shutil.copy2(csv_src_path, local_csv_target)
-                        else:
-                            print(f"CSV: {file} already exists locally. Skipping.")
-
-                        # Replicate CSV to Dropbox Cloud (if enabled)
-                        if USE_DROPBOX:
-                            upload_to_dropbox(csv_src_path)
-
-                        # Replicate CSV to Time Capsule (if enabled and online)
-                        if USE_TIME_CAPSULE and tc_online:
-                            tc_csv_dir = os.path.join(TIME_CAPSULE_DIR, "pi/CSV/Meteors.ua/Alex_Aitov")
-                            tc_csv_target = os.path.join(tc_csv_dir, file)
-                            if not os.path.exists(tc_csv_target):
-                                os.makedirs(tc_csv_dir, exist_ok=True)
-                                shutil.copy2(csv_src_path, tc_csv_target)
-
-                        # Replicate CSV to Mac Mini (if enabled and online)
-                        if USE_MAC_MINI and mac_online:
-                            mac_csv_dir = os.path.join(MAC_MINI_DIR, "pi/CSV/Meteors.ua/Alex_Aitov")
-                            mac_csv_target = os.path.join(mac_csv_dir, file)
-                            if not os.path.exists(mac_csv_target):
-                                os.makedirs(mac_csv_dir, exist_ok=True)
-                                shutil.copy2(csv_src_path, mac_csv_target)
+                    # if file.lower().endswith(".csv"):
+                    #     csv_src_path = os.path.join(root, file)
+                    #
+                    #     # Always replicate CSV locally to the 4TB disk
+                    #     local_csv_target = os.path.join(LOCAL_CSV_DIR, file)
+                    #     if not os.path.exists(local_csv_target):
+                    #         shutil.copy2(csv_src_path, local_csv_target)
+                    #     else:
+                    #         print(f"CSV: {file} already exists locally. Skipping.")
+                    #
+                    #     # Replicate CSV to Dropbox Cloud (if enabled)
+                    #     if USE_DROPBOX:
+                    #         upload_to_dropbox(csv_src_path)
+                    #
+                    #     # Replicate CSV to Time Capsule (if enabled and online)
+                    #     if USE_TIME_CAPSULE and tc_online:
+                    #         tc_csv_dir = os.path.join(TIME_CAPSULE_DIR, "pi/CSV/Meteors.ua/Alex_Aitov")
+                    #         tc_csv_target = os.path.join(tc_csv_dir, file)
+                    #         if not os.path.exists(tc_csv_target):
+                    #             os.makedirs(tc_csv_dir, exist_ok=True)
+                    #             shutil.copy2(csv_src_path, tc_csv_target)
+                    #
+                    #     # Replicate CSV to Mac Mini (if enabled and online)
+                    #     if USE_MAC_MINI and mac_online:
+                    #         mac_csv_dir = os.path.join(MAC_MINI_DIR, "pi/CSV/Meteors.ua/Alex_Aitov")
+                    #         mac_csv_target = os.path.join(mac_csv_dir, file)
+                    #         if not os.path.exists(mac_csv_target):
+                    #             os.makedirs(mac_csv_dir, exist_ok=True)
+                    #             shutil.copy2(csv_src_path, mac_csv_target)
 
             # 3. Replicate the whole unpacked directory to network nodes
             if USE_TIME_CAPSULE and tc_online:
