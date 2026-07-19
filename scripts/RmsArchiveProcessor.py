@@ -412,13 +412,13 @@ def backup_to_mac(folder_name, local_unpacked_dir, local_stack_file, config):
 
     # Base modern smbclient array (No legacy flags required for macOS SMB v2/v3)
     smb_base_cmd = [
-        "smbclient", f"//{mac_ip}/{mac_share}",
+        "smbclient", f"//{mac_ip}",
         "-U", f"{mac_user}%{mac_password}"
     ]
 
     # Resolve target paths using forward slashes
-    remote_day_dir = f"{year}/{month}/{station_name}/{folder_name}"
-    remote_camera_stacks_dir = f"{year}/{month}/{station_name}/stacks"
+    remote_day_dir = f"{mac_share}/{year}/{month}/{station_name}/{folder_name}"
+    remote_camera_stacks_dir = f"{mac_share}/{year}/{month}/{station_name}/stacks"
 
     # Helper logic to generate structured folder creation hierarchy
     def generate_sequential_mkdir(target_path):
