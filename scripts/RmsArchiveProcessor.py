@@ -443,10 +443,12 @@ def backup_to_mac(folder_name, local_unpacked_dir, local_stack_file, config):
 
                     remote_file_target = f"{remote_day_dir}/{rel_path}"
 
-                    if "/" in rel_path:
-                        # SAFE: Extracting clean string path substring using [0] index
-                        sub_dir_rel = rel_path.rpartition('/')[0]
-                        sub_dir_full = f"{remote_day_dir}/{sub_dir_rel}"
+                    # FIXED: Using clean os.path.dirname instead of rpartition tuple
+                    # For 'rms/file.csv' it returns 'rms'. For root files it returns '' (empty string).
+                    parent_sub_dir = os.path.dirname(rel_path)
+
+                    if parent_sub_dir:
+                        sub_dir_full = f"{remote_day_dir}/{parent_sub_dir}"
                         safe_remote_mkdir(sub_dir_full)
 
                     # Unified shell string execution pattern for file deployment
