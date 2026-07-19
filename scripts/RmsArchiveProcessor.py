@@ -363,6 +363,7 @@ def backup_to_time_capsule(folder_name, local_unpacked_dir, local_stack_file, lo
         # Step C: Upload Meteor Stack Image into central stacks directory
         if local_stack_file and os.path.exists(local_stack_file):
             stack_name = os.path.basename(local_stack_file)
+            print(f"[Time Capsule] Start: Central meteor stack image mirrored to: {stacks_dir}/{stack_name} by {local_stack_file}")
             upload_stack_cmd = smb_base_cmd + ["-c", f"put {local_stack_file} {stacks_dir}"]
             subprocess.run(upload_stack_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
             print(f"[Time Capsule] Success: Central meteor stack image mirrored to: {stacks_dir}/{stack_name}")
@@ -370,12 +371,14 @@ def backup_to_time_capsule(folder_name, local_unpacked_dir, local_stack_file, lo
         # Step D: Upload the Monolithic Monthly CSV Report (Overwrites with latest state)
         if local_monthly_csv and os.path.exists(local_monthly_csv):
             csv_name = os.path.basename(local_monthly_csv)
+            print(f"[Time Capsule] Start: Aggregated monthly CSV report updated in: {remote_monthly_csv_dir}/{csv_name} by {local_monthly_csv}")
             upload_csv_cmd = smb_base_cmd + ["-c", f"put {local_monthly_csv} {remote_monthly_csv_dir}/{csv_name}"]
             subprocess.run(upload_csv_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
             print(f"[Time Capsule] Success: Aggregated monthly CSV report updated in: {remote_monthly_csv_dir}/{csv_name}")
         # Copy day csv
         if local_day_csv and os.path.exists(local_day_csv):
             csv_name = os.path.basename(local_day_csv)
+            print(f"[Time Capsule] Start: Day csv updated in: {remote_day_csv_dir}/{csv_name} by {local_day_csv}")
             upload_csv_cmd = smb_base_cmd + ["-c", f"put {local_day_csv} {remote_day_csv_dir}/{csv_name}"]
             subprocess.run(upload_csv_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
             print(f"[Time Capsule] Success: Day csv updated in: {remote_day_csv_dir}/{csv_name}")
