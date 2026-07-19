@@ -412,31 +412,27 @@ def backup_to_mac(folder_name, local_unpacked_dir, local_stack_file, config):
 
     # Base modern smbclient array (No legacy flags required for macOS SMB v2/v3)
     smb_base_cmd = [
-        "smbclient", f"//{mac_ip}",
+        "smbclient", f"//{mac_ip}/{mac_share}",
         "-U", f"{mac_user}%{mac_password}"
     ]
 
     # Resolve target paths using forward slashes
-    remote_day_dir = f"{mac_share}/{year}/{month}/{station_name}/{folder_name}"
-    remote_camera_stacks_dir = f"{mac_share}/{year}/{month}/{station_name}/stacks"
+    remote_day_dir = f"{year}/{month}/{station_name}/{folder_name}"
+    remote_camera_stacks_dir = f"/{year}/{month}/{station_name}/stacks"
 
-    # Helper logic to generate structured folder creation hierarchy
-    def generate_sequential_mkdir(target_path):
+    # Isolated folder creator to bypass macOS collision aborts completely
+    def safe_remote_mkdir(target_path):
         parts = [p for p in target_path.split('/') if p]
-        commands = []
         current = ""
         for part in parts:
             current = f"{current}/{part}" if current else part
-            commands.append(f"mkdir {current}")
-        return "; ".join(commands)
+            cmd = smb_base_cmd + ["-c", f"mkdir {current}"]
+            subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     try:
         # Step A: Enforce deep path baseline setup on Mac mini
-        mkdir_sequence = (
-            f"{generate_sequential_mkdir(remote_day_dir)}; "
-            f"{generate_sequential_mkdir(remote_camera_stacks_dir)}"
-        )
-        subprocess.run(smb_base_cmd + ["-c", mkdir_sequence], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        safe_remote_mkdir(remote_day_dir)
+        safe_remote_mkdir(remote_camera_stacks_dir)
 
         # Step B: Mirror the entire Unpacked Day Folder content recursively from Golden Source
         for root, _, files in os.walk(local_unpacked_dir):
@@ -448,7 +444,7 @@ def backup_to_mac(folder_name, local_unpacked_dir, local_stack_file, config):
                 if "/" in rel_path:
                     sub_dir_rel = rel_path.rpartition('/')[0]
                     sub_dir_full = f"{remote_day_dir}/{sub_dir_rel}"
-                    subprocess.run(smb_base_cmd + ["-c", generate_sequential_mkdir(sub_dir_full)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                    subprocess.run(smb_base_cmd + ["-c", safe_remote_mkdir(sub_dir_full)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
                 upload_file_cmd = smb_base_cmd + ["-c", f"put {local_file_path} {remote_file_target}"]
                 subprocess.run(upload_file_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
