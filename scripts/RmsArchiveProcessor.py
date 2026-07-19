@@ -27,27 +27,36 @@ try:
     LOCAL_ARCHIVE_ROOT = config.get("PATHS", "local_archive_root")
     LOCAL_DATA_ROOT = config.get("PATHS", "local_data_root")
     LOCAL_CSV_DIR = config.get("PATHS", "local_csv_dir")
-    TIME_CAPSULE_DIR = config.get("PATHS", "time_capsule_dir")
-    MAC_MINI_DIR = config.get("PATHS", "mac_mini_dir")
 
-    # Read feature toggle flags from the INI file
     USE_DROPBOX = config.getboolean("DROPBOX", "use_dropbox")
     USE_TIME_CAPSULE = config.getboolean("TIME_CAPSULE", "use_time_capsule")
-    USE_MAC_MINI = config.getboolean("PATHS", "use_mac_mini")
+    USE_MAC = config.getboolean("MAC", "use_mac")
 
-    MAC_MINI_IP = config.get("NETWORK", "mac_mini_ip")
+    MAC_IP = config.get("MAC", "mac_ip")
+    TC_IP = config.get("TIME_CAPSULE", "tc_ip")
 except (configparser.NoSectionError, configparser.NoOptionError) as e:
     print(f"Critical Error parsing configuration parameters: {e}")
     sys.exit(1)
 
 LOCK_FILE = "/tmp/rms_manager.lock"
 
-def is_mac_mini_online():
+def is_mac_online():
     """Network ping check for Mac Mini availability"""
-    if not USE_MAC_MINI:
+    if not USE_MAC:
         return False
     try:
-        subprocess.run(["ping", "-c", "1", "-W", "2", MAC_MINI_IP],
+        subprocess.run(["ping", "-c", "1", "-W", "2", MAC_IP],
+                       check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+def is_tc_online():
+    """Network ping check for Mac Mini availability"""
+    if not USE_TIME_CAPSULE:
+        return False
+    try:
+        subprocess.run(["ping", "-c", "1", "-W", "2", TC_IP],
                        check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return True
     except subprocess.CalledProcessError:
@@ -119,7 +128,7 @@ def copy_meteor_stack(unpacked_day_dir, base_camera_dir):
     return None
 
 
-def process_and_backup_csv(folder_name, final_local_unpacked_dir, local_csv_dir, csv_shared_folders="", use_dropbox=False):
+def process_and_backup_csv(folder_name, final_local_unpacked_dir, local_csv_dir):
     """
     Processes daily RMS CSV files, manages a local deduplicated monthly archive,
     and optionally distributes backups to network shares and Dropbox.
@@ -199,72 +208,7 @@ def process_and_backup_csv(folder_name, final_local_unpacked_dir, local_csv_dir,
 
     except Exception as e:
         print(f"[CSV Local] Critical error during local processing: {e}")
-        # If local step fails, we shouldn't rely on local paths for network/cloud replication
-        local_monthly_file_path = None
-
-    # -------------------------------------------------------------------------
-    # STEP 2: NETWORK STORAGE ENDPOINTS (Mac mini / Time Capsule)
-    # -------------------------------------------------------------------------
-    shared_folder_list = [folder.strip() for folder in csv_shared_folders.split(",") if folder.strip()]
-    last_successful_monthly_path = local_monthly_file_path
-
-    for shared_folder in shared_folder_list:
-        if not os.path.isdir(shared_folder):
-            print(f"[CSV Network] Target share is offline: {shared_folder}. Skipping.")
-            continue
-
-        try:
-            target_year_dir = os.path.join(shared_folder, year)
-            os.makedirs(target_year_dir, exist_ok=True)
-
-            # Copy daily file to share
-            target_day_csv = os.path.join(target_year_dir, f"{folder_name}.csv")
-            shutil.copy2(csv_file_path, target_day_csv)
-            print(f"[CSV Network] Successfully backed up daily file to share: {target_day_csv}")
-
-            # Smart merge into share monthly report
-            monthly_dir = os.path.join(target_year_dir, "monthly", month)
-            os.makedirs(monthly_dir, exist_ok=True)
-            network_monthly_file_path = os.path.join(monthly_dir, f"{year}_{month}_{station_name}.csv")
-
-            if os.path.exists(network_monthly_file_path):
-                with open(network_monthly_file_path, "r", encoding="utf-8") as mf:
-                    existing_lines = mf.readlines()
-                existing_set = set(line.strip() for line in existing_lines)
-
-                with open(network_monthly_file_path, "a", encoding="utf-8") as mf:
-                    for line in data_lines:
-                        if line.strip() not in existing_set:
-                            mf.write(line)
-                print(f"[CSV Network] Data appended to share monthly report: {network_monthly_file_path}")
-            else:
-                with open(network_monthly_file_path, "w", encoding="utf-8") as mf:
-                    mf.write(header)
-                    mf.writelines(data_lines)
-                print(f"[CSV Network] Created new monolithic share report: {network_monthly_file_path}")
-
-            # Use network path as the source for Dropbox if available
-            last_successful_monthly_path = network_monthly_file_path
-
-        except Exception as e:
-            print(f"[CSV Network] Error processing share {shared_folder}: {e}")
-
-    # -------------------------------------------------------------------------
-    # STEP 3: CLOUD BACKUP VIA DBXCLI
-    # -------------------------------------------------------------------------
-    if use_dropbox and last_successful_monthly_path:
-        dropbox_dir = f"/RMS_BKP/{year}/monthly/{month}"
-        dropbox_file_path = f"{dropbox_dir}/{year}_{month}_{station_name}.csv"
-
-        print(f"[Dropbox] Syncing updated monthly report to cloud storage...")
-        cmd = ["dbxcli", "put", last_successful_monthly_path, dropbox_file_path]
-
-        try:
-            subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
-            print(f"[Dropbox] Upload sequence completed: {dropbox_file_path}")
-        except subprocess.CalledProcessError as e:
-            print(f"[Dropbox] Execution error with dbxcli interface: {e.stderr.strip()}")
-
+        return None
     return csv_file_path
 
 def backup_to_time_capsule(folder_name, local_unpacked_dir, local_stack_file, local_day_csv, local_monthly_csv, config):
@@ -272,8 +216,8 @@ def backup_to_time_capsule(folder_name, local_unpacked_dir, local_stack_file, lo
     Synchronizes processed day results (unpacked folder, meteor stack, and monthly CSV)
     directly to Apple Time Capsule via smbclient using historical golden source data.
     """
-    if not config.getboolean('TIME_CAPSULE', 'use_time_capsule', fallback=False):
-        return False
+    if not USE_TIME_CAPSULE:
+        return True
 
     # 1. Parse configuration parameters
     tc_ip = config.get('TIME_CAPSULE', 'tc_ip')
@@ -380,7 +324,7 @@ def backup_to_dropbox(folder_name, local_day_csv, local_monthly_csv, config):
     using the Go-based dbxcli CLI tool from the server's user space environment.
     """
     if not USE_DROPBOX:
-        return False
+        return True
 
     # 1. Parse structural and security parameters from the INI file
     csv_prefix = config.get('DROPBOX', 'dbx_csv_prefix').strip('/')
@@ -442,6 +386,94 @@ def backup_to_dropbox(folder_name, local_day_csv, local_monthly_csv, config):
             return False
     return True
 
+def backup_to_mac(folder_name, local_unpacked_dir, local_stack_file, config):
+    """
+    Synchronizes processed day results (unpacked folder, meteor stack)
+    directly to Mac mini internal storage via modern smbclient protocol context.
+    """
+    if not USE_MAC:
+        return True
+
+    # 1. Parse operational credentials
+    mac_ip = config.get('MAC', 'mac_ip')
+    mac_share = config.get('MAC', 'mac_share')
+    mac_user = config.get('MAC', 'mac_user')
+    mac_password = config.get('MAC', 'mac_password')
+
+    try:
+        station_name = folder_name[0:6]
+        year = folder_name[7:11]
+        month = folder_name[11:13]
+    except IndexError:
+        print(f"[Mac mini] Error: Malformed folder name structure: {folder_name}")
+        return False
+
+    print(f"[Mac mini] Initializing transmission sync pipeline for: {folder_name}")
+
+    # Base modern smbclient array (No legacy flags required for macOS SMB v2/v3)
+    smb_base_cmd = [
+        "smbclient", f"//{mac_ip}/{mac_share}",
+        "-U", f"{mac_user}%{mac_password}"
+    ]
+
+    # Resolve target paths using forward slashes
+    remote_day_dir = f"{year}/{month}/{station_name}/{folder_name}"
+    remote_camera_stacks_dir = f"{year}/{month}/{station_name}/stacks"
+
+    # Helper logic to generate structured folder creation hierarchy
+    def generate_sequential_mkdir(target_path):
+        parts = [p for p in target_path.split('/') if p]
+        commands = []
+        current = ""
+        for part in parts:
+            current = f"{current}/{part}" if current else part
+            commands.append(f"mkdir {current}")
+        return "; ".join(commands)
+
+    try:
+        # Step A: Enforce deep path baseline setup on Mac mini
+        mkdir_sequence = (
+            f"{generate_sequential_mkdir(remote_day_dir)}; "
+            f"{generate_sequential_mkdir(remote_camera_stacks_dir)}"
+        )
+        subprocess.run(smb_base_cmd + ["-c", mkdir_sequence], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        # Step B: Mirror the entire Unpacked Day Folder content recursively from Golden Source
+        for root, _, files in os.walk(local_unpacked_dir):
+            for file in files:
+                local_file_path = os.path.join(root, file)
+                rel_path = os.path.relpath(local_file_path, local_unpacked_dir).replace(os.sep, '/')
+
+                # Windows/Mac style backslashes inside smbclient put argument context
+                remote_file_target = f"{remote_day_dir}/{rel_path}".replace('/', '\\')
+
+                if "/" in rel_path:
+                    sub_dir_rel = rel_path.rpartition('/')
+                    sub_dir_full = f"{remote_day_dir}/{sub_dir_rel}"
+                    subprocess.run(smb_base_cmd + ["-c", generate_sequential_mkdir(sub_dir_full)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+                upload_file_cmd = smb_base_cmd + ["-c", f"put \"{local_file_path}\" \"{remote_file_target}\""]
+                subprocess.run(upload_file_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        print(f"[Mac mini] Success: Raw data folder deployed to: {remote_day_dir}")
+
+        # Step C: Upload Meteor Stack Image
+        if local_stack_file and os.path.exists(local_stack_file):
+            stack_name = os.path.basename(local_stack_file)
+            remote_stack_target = f"{remote_camera_stacks_dir}/{stack_name}".replace('/', '\\')
+
+            upload_stack_cmd = smb_base_cmd + ["-c", f"put \"{local_stack_file}\" \"{remote_stack_target}\""]
+            result_stack = subprocess.run(upload_stack_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+            if result_stack.returncode == 0 or "putting" in result_stack.stdout.lower():
+                print(f"[Mac mini] Success: Central meteor stack image mirrored.")
+            else:
+                print(f"[Mac mini] Notice: Stack upload skipped or redirected. Log: {result_stack.stderr.strip()}")
+    except Exception as e:
+        print(f"[Mac mini] Unexpected architecture fault within backup sync block: {e}")
+        return False
+    return True
+
 
 def main():
     # --- CRON OVERLAP PROTECTION ---
@@ -453,13 +485,13 @@ def main():
         sys.exit(0)
 
     # Active configuration status display
-    tc_online = os.path.exists(TIME_CAPSULE_DIR) if USE_TIME_CAPSULE else False
-    mac_online = is_mac_mini_online() if USE_MAC_MINI else False
+    tc_online = is_tc_online() if USE_TIME_CAPSULE else False
+    mac_online = is_mac_online() if USE_MAC else False
 
     print("--- Active Configuration Modules ---")
     print(f"Dropbox Integration:  {'ENABLED' if USE_DROPBOX else 'DISABLED'}")
     print(f"Time Capsule Vault:   {'ENABLED (Online)' if tc_online else 'ENABLED (Offline)' if USE_TIME_CAPSULE else 'DISABLED'}")
-    print(f"Mac Mini Storage:     {'ENABLED (Online)' if mac_online else 'ENABLED (Offline)' if USE_MAC_MINI else 'DISABLED'}")
+    print(f"Mac Mini Storage:     {'ENABLED (Online)' if mac_online else 'ENABLED (Offline)' if USE_MAC else 'DISABLED'}")
     print("------------------------------------")
 
     os.makedirs(LOCAL_CSV_DIR, exist_ok=True)
@@ -536,25 +568,11 @@ def main():
             # Extract the raw folder name (e.g., "UA0001_20260718_123456") from the full path
             extracted_folder_name = os.path.basename(os.path.normpath(final_local_unpacked_dir))
 
-            # Prepare the list of active network shares based on your config toggles
-            active_shares = []
-            if USE_MAC_MINI:
-                active_shares.append(MAC_MINI_DIR)
-            if USE_TIME_CAPSULE:
-                active_shares.append(TIME_CAPSULE_DIR)
-
-            # Join them into a comma-separated string for our processing function
-            csv_shared_folders_str = ",".join(active_shares)
-
-            print(f"[Main] Launching CSV pipeline for folder: {extracted_folder_name}")
-
             # Call the upgraded function including LOCAL_CSV_DIR
             golden_day_csv = process_and_backup_csv(
                 folder_name=extracted_folder_name,
                 final_local_unpacked_dir=final_local_unpacked_dir, # Passed directly
-                local_csv_dir=LOCAL_CSV_DIR,
-                csv_shared_folders=csv_shared_folders_str,
-                use_dropbox=USE_DROPBOX
+                local_csv_dir=LOCAL_CSV_DIR
             )
 
             # 1. Capture the exact output path of your local golden sources
@@ -565,14 +583,18 @@ def main():
 
             # 2. Fire the Time Capsule backup engine sequence
             if USE_TIME_CAPSULE:
-                sync_to_tc_done = backup_to_time_capsule(
-                    folder_name=extracted_folder_name,
-                    local_unpacked_dir=golden_unpacked_dir,
-                    local_stack_file=golden_stack_file,
-                    local_day_csv=golden_day_csv,
-                    local_monthly_csv=golden_monthly_csv,
-                    config=config  # Pass the parsed configparser object down
-                )
+                if tc_online:
+                    sync_to_tc_done = backup_to_time_capsule(
+                        folder_name=extracted_folder_name,
+                        local_unpacked_dir=golden_unpacked_dir,
+                        local_stack_file=golden_stack_file,
+                        local_day_csv=golden_day_csv,
+                        local_monthly_csv=golden_monthly_csv,
+                        config=config  # Pass the parsed configparser object down
+                    )
+                else:
+                    print("Time Capsule is offline. Postponing data folder sync.")
+                    sync_to_tc_done = False
             else:
                 sync_to_tc_done = True
 
@@ -587,13 +609,16 @@ def main():
             else:
                 sync_to_dropbox_done = True
 
-            if USE_MAC_MINI:
+            if USE_MAC:
                 if mac_online:
-                    mac_data_dir = os.path.join(MAC_MINI_DIR, "pi/data", relative_target_path)
-                    print(f"Syncing unpacked data to Mac Mini...")
-                    sync_to_mac_done = sync_directory(final_local_unpacked_dir, mac_data_dir)
+                    sync_to_mac_done = backup_to_mac(
+                        folder_name=extracted_folder_name,
+                        local_unpacked_dir=golden_unpacked_dir,
+                        local_stack_file=golden_stack_file,
+                        config=config
+                    )
                 else:
-                    print("Mac Mini is offline. Postponing data folder sync.")
+                    print("Mac is offline. Postponing data folder sync.")
                     sync_to_mac_done = False
             else:
                 # If module is disabled, consider sync complete to allow local file relocation
@@ -601,26 +626,25 @@ def main():
 
         # --- 4. SECOND TASK LOGIC: ARCHIVE RELOCATION & CLEANUP ---
         # If external syncing targets are disabled or successful, run local folder consolidation
-        if sync_to_tc_done and (sync_to_mac_done or not mac_online) and sync_to_dropbox_done:
-            if sync_to_tc_done and sync_to_dropbox_done and (sync_to_mac_done or not USE_MAC_MINI):
-                final_archive_dir = os.path.join(LOCAL_ARCHIVE_ROOT, relative_target_path)
-                os.makedirs(final_archive_dir, exist_ok=True)
+        if sync_to_tc_done and sync_to_mac_done and sync_to_dropbox_done:
+            final_archive_dir = os.path.join(LOCAL_ARCHIVE_ROOT, relative_target_path)
+            os.makedirs(final_archive_dir, exist_ok=True)
 
-                print("Verifications aligned. Relocating original bz2/tar archives internally...")
-                shutil.move(local_file_path, os.path.join(final_archive_dir, filename))
+            print("Verifications aligned. Relocating original bz2/tar archives internally...")
+            shutil.move(local_file_path, os.path.join(final_archive_dir, filename))
 
-                # Move raw full data archive from 'full' directory if present
-                full_filename = filename.replace("_processed_detected.tar", "_full_detected.tar")
-                local_full_path = os.path.join(FULL_DIR, full_filename)
+            # Move raw full data archive from 'full' directory if present
+            full_filename = filename.replace("_processed_detected.tar", "_full_detected.tar")
+            local_full_path = os.path.join(FULL_DIR, full_filename)
 
-                if os.path.exists(local_full_path):
-                    print(f"Matching raw archive spotted: {full_filename}. Relocating to {final_archive_dir}...")
-                    try:
-                        shutil.move(local_full_path, os.path.join(final_archive_dir, full_filename))
-                    except Exception as e:
-                        print(f"Failed to move raw archive file {full_filename}: {e}")
-            else:
-                print("Keeping archives in root uploads folder until Mac Mini host comes online.")
+            if os.path.exists(local_full_path):
+                print(f"Matching raw archive spotted: {full_filename}. Relocating to {final_archive_dir}...")
+                try:
+                    shutil.move(local_full_path, os.path.join(final_archive_dir, full_filename))
+                except Exception as e:
+                    print(f"Failed to move raw archive file {full_filename}: {e}")
+        else:
+            print("Keeping archives in root uploads folder until all drives comes synced.")
 
     fcntl.flock(lock_f, fcntl.LOCK_UN)
 
