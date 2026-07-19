@@ -420,13 +420,14 @@ def backup_to_mac(folder_name, local_unpacked_dir, local_stack_file, config):
     remote_day_dir = f"{year}/{month}/{station_name}/{folder_name}"
     remote_camera_stacks_dir = f"/{year}/{month}/{station_name}/stacks"
 
-    # Isolated folder creator to bypass macOS collision aborts completely
+    # Isolated folder creator using native Windows/Samba backslashes for macOS compatibility
     def safe_remote_mkdir(target_path):
         parts = [p for p in target_path.split('/') if p]
         current = ""
         for part in parts:
-            current = f"{current}/{part}" if current else part
-            cmd = smb_base_cmd + ["-c", f"mkdir {current}"]
+            current = f"{current}\\{part}" if current else part
+            # Execute mkdir with explicitly escaped backslashes
+            cmd = smb_base_cmd + ["-c", f"mkdir \"{current}\""]
             subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     try:
