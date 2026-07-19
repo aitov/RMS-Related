@@ -32,7 +32,7 @@ try:
 
     # Read feature toggle flags from the INI file
     USE_DROPBOX = config.getboolean("PATHS", "use_dropbox")
-    USE_TIME_CAPSULE = config.getboolean("PATHS", "use_time_capsule")
+    USE_TIME_CAPSULE = config.getboolean("TIME_CAPSULE", "use_time_capsule")
     USE_MAC_MINI = config.getboolean("PATHS", "use_mac_mini")
 
     MAC_MINI_IP = config.get("NETWORK", "mac_mini_ip")
