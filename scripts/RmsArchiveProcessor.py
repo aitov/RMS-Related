@@ -456,17 +456,18 @@ def backup_to_mac(folder_name, local_unpacked_dir, local_stack_file, config):
                 if "/" in rel_path:
                     sub_dir_rel = rel_path.rpartition('/')[0]
                     sub_dir_full = f"{remote_day_dir}/{sub_dir_rel}"
-                    subprocess.run(smb_base_cmd + ["-c", safe_remote_mkdir(sub_dir_full)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                    safe_remote_mkdir(sub_dir_full)
 
-                upload_file_cmd = smb_base_cmd + ["-c", f"put {local_file_path} {remote_file_target}"]
-                subprocess.run(upload_file_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+                # Execute put cleanly wrapped inside shell bounds
+                full_put_cmd = f"{smb_credentials_str} -c 'put \"{local_file_path}\" \"{remote_file_target}\"'"
+                subprocess.run(full_put_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
 
         print(f"[Mac] Success: Raw data folder deployed to: {remote_day_dir}")
 
         if local_stack_file and os.path.exists(local_stack_file):
             stack_name = os.path.basename(local_stack_file)
-            upload_stack_cmd = smb_base_cmd + ["-c", f"put {local_stack_file} {remote_camera_stacks_dir}/{stack_name}"]
-            subprocess.run(upload_stack_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+            full_put_cmd = f"{smb_credentials_str} -c 'put \"{local_stack_file}\" \"{remote_camera_stacks_dir}/{stack_name}\"'"
+            subprocess.run(full_put_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
             print(f"[Mac] Success: Central meteor stack image mirrored to: {remote_camera_stacks_dir}/{stack_name}")
 
     except Exception as e:
