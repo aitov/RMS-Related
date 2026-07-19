@@ -428,7 +428,15 @@ def backup_to_mac(folder_name, local_unpacked_dir, local_stack_file, config):
             current = f"{current}\\{part}" if current else part
             # Execute mkdir with explicitly escaped backslashes
             cmd = smb_base_cmd + ["-c", f"mkdir \"{current}\""]
-            subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            # Execute and capture
+            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+            # Print everything if it failed to let us audit macOS internal response
+            if result.returncode != 0:
+                print(f"[Mac mini Debug] mkdir target: \"{current}\" failed!")
+                print(f"  -> STDOUT: {result.stdout.strip()}")
+                print(f"  -> STDERR: {result.stderr.strip()}")
+                print(f"  -> RETURN CODE: {result.returncode}")
 
     try:
         # Step A: Enforce deep path baseline setup on Mac mini
