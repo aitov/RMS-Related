@@ -519,6 +519,7 @@ def main():
                     local_monthly_csv=golden_monthly_csv,
                     config=config  # Pass the parsed configparser object down
                 )
+                print(f"Syncing data to Time Capsule: {sync_to_tc_done}")
 
             if USE_MAC_MINI:
                 if mac_online:
