@@ -338,7 +338,7 @@ def backup_to_time_capsule(folder_name, local_unpacked_dir, local_stack_file, lo
         mkdir_sequence = (
             f"{generate_sequential_mkdir(remote_day_dir)}; "
             f"{generate_sequential_mkdir(stacks_dir)}; "
-            f"{generate_sequential_mkdir(remote_monthly_csv_dir)}"
+            f"{generate_sequential_mkdir(remote_monthly_csv_dir)}; "
             f"{generate_sequential_mkdir(remote_day_csv_dir)}"
         )
         subprocess.run(smb_base_cmd + ["-c", mkdir_sequence], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
