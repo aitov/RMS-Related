@@ -405,10 +405,10 @@ def backup_to_mac(folder_name, local_unpacked_dir, local_stack_file, config):
         year = folder_name[7:11]
         month = folder_name[11:13]
     except IndexError:
-        print(f"[Mac mini] Error: Malformed folder name structure: {folder_name}")
+        print(f"[Mac] Error: Malformed folder name structure: {folder_name}")
         return False
 
-    print(f"[Mac mini] Initializing transmission sync pipeline for: {folder_name}")
+    print(f"[Mac] Initializing transmission sync pipeline for: {folder_name}")
 
     # Base modern smbclient array (No legacy flags required for macOS SMB v2/v3)
     smb_base_cmd = [
@@ -443,34 +443,26 @@ def backup_to_mac(folder_name, local_unpacked_dir, local_stack_file, config):
             for file in files:
                 local_file_path = os.path.join(root, file)
                 rel_path = os.path.relpath(local_file_path, local_unpacked_dir).replace(os.sep, '/')
-
-                # Windows/Mac style backslashes inside smbclient put argument context
-                remote_file_target = f"{remote_day_dir}/{rel_path}".replace('/', '\\')
+                remote_file_target = f"{remote_day_dir}/{rel_path}"
 
                 if "/" in rel_path:
-                    sub_dir_rel = rel_path.rpartition('/')
+                    sub_dir_rel = rel_path.rpartition('/')[0]
                     sub_dir_full = f"{remote_day_dir}/{sub_dir_rel}"
                     subprocess.run(smb_base_cmd + ["-c", generate_sequential_mkdir(sub_dir_full)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-                upload_file_cmd = smb_base_cmd + ["-c", f"put \"{local_file_path}\" \"{remote_file_target}\""]
-                subprocess.run(upload_file_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                upload_file_cmd = smb_base_cmd + ["-c", f"put {local_file_path} {remote_file_target}"]
+                subprocess.run(upload_file_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
 
-        print(f"[Mac mini] Success: Raw data folder deployed to: {remote_day_dir}")
+        print(f"[Mac] Success: Raw data folder deployed to: {remote_day_dir}")
 
-        # Step C: Upload Meteor Stack Image
         if local_stack_file and os.path.exists(local_stack_file):
             stack_name = os.path.basename(local_stack_file)
-            remote_stack_target = f"{remote_camera_stacks_dir}/{stack_name}".replace('/', '\\')
+            upload_stack_cmd = smb_base_cmd + ["-c", f"put {local_stack_file} {remote_camera_stacks_dir}/{stack_name}"]
+            subprocess.run(upload_stack_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+            print(f"[Mac] Success: Central meteor stack image mirrored to: {remote_camera_stacks_dir}/{stack_name}")
 
-            upload_stack_cmd = smb_base_cmd + ["-c", f"put \"{local_stack_file}\" \"{remote_stack_target}\""]
-            result_stack = subprocess.run(upload_stack_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-
-            if result_stack.returncode == 0 or "putting" in result_stack.stdout.lower():
-                print(f"[Mac mini] Success: Central meteor stack image mirrored.")
-            else:
-                print(f"[Mac mini] Notice: Stack upload skipped or redirected. Log: {result_stack.stderr.strip()}")
     except Exception as e:
-        print(f"[Mac mini] Unexpected architecture fault within backup sync block: {e}")
+        print(f"[Mac] Unexpected architecture fault within backup sync block: {e}")
         return False
     return True
 
