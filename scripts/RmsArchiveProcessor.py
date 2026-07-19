@@ -430,7 +430,7 @@ def backup_to_mac(folder_name, local_unpacked_dir, local_stack_file, config):
         current = ""
         for part in parts:
             current = f"{current}/{part}" if current else part
-
+            print(f"[Mac] Making directory {current}")
             # Use shell execution to ensure quotes and slashes pass natively without parsing distortion
             full_shell_cmd = f"{smb_credentials_str} -c 'mkdir \"{current}\"'"
             result = subprocess.run(full_shell_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
