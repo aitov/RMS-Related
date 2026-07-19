@@ -418,7 +418,7 @@ def backup_to_mac(folder_name, local_unpacked_dir, local_stack_file, config):
 
     # Resolve target paths using forward slashes
     remote_day_dir = f"{year}/{month}/{station_name}/{folder_name}"
-    remote_camera_stacks_dir = f"/{year}/{month}/{station_name}/stacks"
+    remote_camera_stacks_dir = f"{year}/{month}/{station_name}/stacks"
 
     # Isolated folder creator using native Windows/Samba backslashes for macOS compatibility
     def safe_remote_mkdir(target_path):
