@@ -129,10 +129,9 @@ def copy_meteor_stack(unpacked_day_dir, base_camera_dir):
                 print(f"Failed to copy stack file to {stacks_target_dir}: {e}")
         else:
             print(f"Stacks: File {stack_file} already exists in central stacks directory. Skipping.")
+        return dst_stack_path
+    return None
 
-import os
-import shutil
-import subprocess
 
 def process_and_backup_csv(folder_name, final_local_unpacked_dir, local_csv_dir, csv_shared_folders="", use_dropbox=False):
     """
@@ -146,7 +145,7 @@ def process_and_backup_csv(folder_name, final_local_unpacked_dir, local_csv_dir,
         month = folder_name[11:13]
     except IndexError:
         print(f"[CSV] Error: Invalid folder name format: {folder_name}")
-        return
+        return None
 
     # Define path directly inside the unpacked day directory
     csv_file_path = os.path.join(final_local_unpacked_dir, "rms", f"{folder_name}.csv")
@@ -154,12 +153,12 @@ def process_and_backup_csv(folder_name, final_local_unpacked_dir, local_csv_dir,
     # Verify source file existence
     if not os.path.exists(csv_file_path):
         print(f"[CSV] Source file not found: {csv_file_path}")
-        return
+        return None
 
     # Skip empty or header-only files (less than 100 bytes)
     if os.path.getsize(csv_file_path) < 100:
         print(f"[CSV] File is empty or header-only, skipping: {csv_file_path}")
-        return
+        return None
 
     # Read the content of the daily file for deduplicated merging
     try:
@@ -167,10 +166,10 @@ def process_and_backup_csv(folder_name, final_local_unpacked_dir, local_csv_dir,
             lines = f.readlines()
     except IOError as e:
         print(f"[CSV] Error reading source file {csv_file_path}: {e}")
-        return
+        return None
 
     if not lines:
-        return
+        return None
 
     header = lines[0]
     data_lines = lines[1:]
@@ -280,6 +279,116 @@ def process_and_backup_csv(folder_name, final_local_unpacked_dir, local_csv_dir,
         except subprocess.CalledProcessError as e:
             print(f"[Dropbox] Execution error with dbxcli interface: {e.stderr.strip()}")
 
+    return csv_file_path
+
+def backup_to_time_capsule(folder_name, local_unpacked_dir, local_stack_file, local_day_csv, local_monthly_csv, config):
+    """
+    Synchronizes processed day results (unpacked folder, meteor stack, and monthly CSV)
+    directly to Apple Time Capsule via smbclient using historical golden source data.
+    """
+    if not config.getboolean('TIME_CAPSULE', 'use_time_capsule', fallback=False):
+        return False
+
+    # 1. Parse configuration parameters
+    tc_ip = config.get('TIME_CAPSULE', 'tc_ip')
+    tc_share = config.get('TIME_CAPSULE', 'tc_share')
+    tc_user = config.get('TIME_CAPSULE', 'tc_user')
+    tc_password = config.get('TIME_CAPSULE', 'tc_password')
+
+    data_prefix = config.get('TIME_CAPSULE', 'tc_data_prefix').strip('/')
+    csv_prefix = config.get('TIME_CAPSULE', 'tc_csv_prefix').strip('/')
+
+    try:
+        station_name = folder_name[0:6]
+        year = folder_name[7:11]
+        month = folder_name[11:13]
+    except IndexError:
+        print(f"[Time Capsule] Error: Malformed folder name structure: {folder_name}")
+        return False
+
+    print(f"[Time Capsule] Initializing configuration-driven sync for: {folder_name}")
+
+    # Build base execution array with strict compatibility flags
+    smb_base_cmd = [
+        "smbclient", f"//{tc_ip}/{tc_share}",
+        "-U", f"{tc_user}%{tc_password}",
+        "--option=client min protocol=NT1",
+        "--option=client use spnego=no",
+        "--option=client ntlmv2 auth=no"
+    ]
+
+    # Resolve target deep layouts
+    remote_day_dir = f"{data_prefix}/{year}/{month}/{station_name}/{folder_name}"
+    stacks_dir = f"{data_prefix}/{year}/{month}/{station_name}/stacks"
+    remote_monthly_csv_dir = f"{csv_prefix}/{year}/monthly/{month}"
+    remote_day_csv_dir = f"{csv_prefix}/{year}"
+
+    # Helper inline logic to convert a nested path like "a/b/c" into a safe sequence of "mkdir a; mkdir a/b; mkdir a/b/c"
+    def generate_sequential_mkdir(target_path):
+        parts = [p for p in target_path.split('/') if p]
+        commands = []
+        current = ""
+        for part in parts:
+            current = f"{current}/{part}" if current else part
+            commands.append(f"mkdir {current}")
+        return "; ".join(commands)
+
+    try:
+        # Step A: Generate and enforce full deep path baseline infrastructure
+        mkdir_sequence = (
+            f"{generate_sequential_mkdir(remote_day_dir)}; "
+            f"{generate_sequential_mkdir(stacks_dir)}; "
+            f"{generate_sequential_mkdir(remote_monthly_csv_dir)}"
+            f"{generate_sequential_mkdir(remote_day_csv_dir)}"
+        )
+        subprocess.run(smb_base_cmd + ["-c", mkdir_sequence], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+        # Step B: Mirror the entire Unpacked Day Folder content recursively from Golden Source
+        for root, _, files in os.walk(local_unpacked_dir):
+            for file in files:
+                local_file_path = os.path.join(root, file)
+                rel_path = os.path.relpath(local_file_path, local_unpacked_dir).replace(os.sep, '/')
+                remote_file_target = f"{remote_day_dir}/{rel_path}"
+
+                if "/" in rel_path:
+                    sub_dir_rel = rel_path.rpartition('/')[0]
+                    sub_dir_full = f"{remote_day_dir}/{sub_dir_rel}"
+                    subprocess.run(smb_base_cmd + ["-c", generate_sequential_mkdir(sub_dir_full)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+                upload_file_cmd = smb_base_cmd + ["-c", f"put {local_file_path} {remote_file_target}"]
+                subprocess.run(upload_file_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+
+        print(f"[Time Capsule] Success: Raw data folder deployed to: {remote_day_dir}")
+
+        # Step C: Upload Meteor Stack Image into central stacks directory
+        if local_stack_file and os.path.exists(local_stack_file):
+            stack_name = os.path.basename(local_stack_file)
+            upload_stack_cmd = smb_base_cmd + ["-c", f"put {local_stack_file} {stacks_dir}"]
+            subprocess.run(upload_stack_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+            print(f"[Time Capsule] Success: Central meteor stack image mirrored to: {stacks_dir}/{stack_name}")
+
+        # Step D: Upload the Monolithic Monthly CSV Report (Overwrites with latest state)
+        if local_monthly_csv and os.path.exists(local_monthly_csv):
+            csv_name = os.path.basename(local_monthly_csv)
+            upload_csv_cmd = smb_base_cmd + ["-c", f"put {local_monthly_csv} {remote_monthly_csv_dir}/{csv_name}"]
+            subprocess.run(upload_csv_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+            print(f"[Time Capsule] Success: Aggregated monthly CSV report updated in: {remote_monthly_csv_dir}/{csv_name}")
+        # Copy day csv
+        if local_day_csv and os.path.exists(local_day_csv):
+            csv_name = os.path.basename(local_day_csv)
+            upload_csv_cmd = smb_base_cmd + ["-c", f"put {local_day_csv} {remote_day_csv_dir}/{csv_name}"]
+            subprocess.run(upload_csv_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+            print(f"[Time Capsule] Success: Day csv updated in: {remote_day_csv_dir}/{csv_name}")
+
+    except subprocess.CalledProcessError as e:
+        print(f"[Time Capsule] Transmission pipeline aborted. Remote diagnostic: {e.stderr.strip()}")
+        return False
+    except Exception as e:
+        print(f"[Time Capsule] Unexpected architecture fault within sync block: {e}")
+        return False
+    return True
+
+
 def main():
     # --- CRON OVERLAP PROTECTION ---
     lock_f = open(LOCK_FILE, "w")
@@ -366,7 +475,7 @@ def main():
             except Exception as e:
                 print(f"Warning: Failed to enforce permissions: {e}")
 
-            copy_meteor_stack(final_local_unpacked_dir, base_camera_dir)
+            golden_stack_file = copy_meteor_stack(final_local_unpacked_dir, base_camera_dir)
 
             # 2. Process and backup CSV files (Replaces the old commented block)
             # Extract the raw folder name (e.g., "UA0001_20260718_123456") from the full path
@@ -385,7 +494,7 @@ def main():
             print(f"[Main] Launching CSV pipeline for folder: {extracted_folder_name}")
 
             # Call the upgraded function including LOCAL_CSV_DIR
-            process_and_backup_csv(
+            golden_day_csv = process_and_backup_csv(
                 folder_name=extracted_folder_name,
                 final_local_unpacked_dir=final_local_unpacked_dir, # Passed directly
                 local_csv_dir=LOCAL_CSV_DIR,
@@ -393,14 +502,23 @@ def main():
                 use_dropbox=USE_DROPBOX
             )
 
-            # 3. Replicate the whole unpacked directory to network nodes
-            if USE_TIME_CAPSULE and tc_online:
-                tc_data_dir = os.path.join(TIME_CAPSULE_DIR, "pi/data", relative_target_path)
-                print(f"Syncing unpacked data to Time Capsule...")
-                sync_to_tc_done = sync_directory(final_local_unpacked_dir, tc_data_dir)
-            else:
-                # If module is disabled, consider sync complete to allow local file relocation
-                sync_to_tc_done = True
+            # 1. Capture the exact output path of your local golden sources
+            # Let's assume your script variables look like this:
+            golden_unpacked_dir = final_local_unpacked_dir # /mnt/files/pi/data/YEAR/MONTH/STATION/FOLDER
+
+            # Compile path to the verified deduplicated local monthly CSV
+            golden_monthly_csv = os.path.join(LOCAL_CSV_DIR, year, "monthly", month, f"{year}_{month}_{cam_name}.csv")
+
+            # 2. Fire the Time Capsule backup engine sequence
+            if USE_TIME_CAPSULE:
+                sync_to_tc_done = backup_to_time_capsule(
+                    folder_name=extracted_folder_name,
+                    local_unpacked_dir=golden_unpacked_dir,
+                    local_stack_file=golden_stack_file,
+                    local_day_csv=golden_day_csv,
+                    local_monthly_csv=golden_monthly_csv,
+                    config=config  # Pass the parsed configparser object down
+                )
 
             if USE_MAC_MINI:
                 if mac_online:
