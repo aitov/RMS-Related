@@ -416,27 +416,30 @@ def backup_to_mac(folder_name, local_unpacked_dir, local_stack_file, config):
         "-U", f"{mac_user}%{mac_password}"
     ]
 
+    # Compile the base credential block as a single string for shell execution
+    smb_credentials_str = f"smbclient //{mac_ip}/{mac_share} -U '{mac_user}%{mac_password}'"
+
+
     # Resolve target paths using forward slashes
     remote_day_dir = f"{year}/{month}/{station_name}/{folder_name}"
     remote_camera_stacks_dir = f"{year}/{month}/{station_name}/stacks"
 
-    # Isolated folder creator using native Windows/Samba backslashes for macOS compatibility
+    # Robust folder creator utilizing native shell interpretation to fix escaping bugs
     def safe_remote_mkdir(target_path):
         parts = [p for p in target_path.split('/') if p]
         current = ""
         for part in parts:
-            current = f"{current}\\{part}" if current else part
-            # Execute mkdir with explicitly escaped backslashes
-            cmd = smb_base_cmd + ["-c", f"mkdir \"{current}\""]
-            # Execute and capture
-            result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            current = f"{current}/{part}" if current else part
 
-            # Print everything if it failed to let us audit macOS internal response
+            # Use shell execution to ensure quotes and slashes pass natively without parsing distortion
+            full_shell_cmd = f"{smb_credentials_str} -c 'mkdir \"{current}\"'"
+            result = subprocess.run(full_shell_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+
+            # Print output immediately if it's a genuine systemic block (not a collision)
             if result.returncode != 0:
-                print(f"[Mac mini Debug] mkdir target: \"{current}\" failed!")
-                print(f"  -> STDOUT: {result.stdout.strip()}")
-                print(f"  -> STDERR: {result.stderr.strip()}")
-                print(f"  -> RETURN CODE: {result.returncode}")
+                err_log = result.stderr.lower() + result.stdout.lower()
+                if "collision" not in err_log and "exists" not in err_log:
+                    print(f"[Mac mini mkdir log] Target: '{current}' -> Status: {result.stderr.strip()}")
 
     try:
         # Step A: Enforce deep path baseline setup on Mac mini
