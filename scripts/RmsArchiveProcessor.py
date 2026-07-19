@@ -437,6 +437,9 @@ def backup_to_mac(folder_name, local_unpacked_dir, local_stack_file, config):
         # STEP B: RECURSIVE FILE MIRRORING FROM GOLDEN SOURCE
         # ---------------------------------------------------------------------
         if local_unpacked_dir and os.path.exists(local_unpacked_dir):
+            # A local set to keep track of directories we have already verified/created during this run
+            created_dirs_cache = set()
+
             for root, _, files in os.walk(local_unpacked_dir):
                 for file in files:
                     local_file_path = os.path.join(root, file)
@@ -450,7 +453,11 @@ def backup_to_mac(folder_name, local_unpacked_dir, local_stack_file, config):
 
                     if parent_sub_dir:
                         sub_dir_full = f"{remote_day_dir}/{parent_sub_dir}"
-                        safe_remote_mkdir(sub_dir_full)
+
+                        # SPEED FIX: Only trigger safe_remote_mkdir if the path is NOT in our local cache
+                        if sub_dir_full not in created_dirs_cache:
+                            safe_remote_mkdir(sub_dir_full)
+                            created_dirs_cache.add(sub_dir_full)  # Remember it for subsequent files
 
                     # Unified shell string execution pattern for file deployment
                     full_put_cmd = f"{smb_credentials_str} -c 'put \"{local_file_path}\" \"{remote_file_target}\"'"
