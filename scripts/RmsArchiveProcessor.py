@@ -31,7 +31,7 @@ try:
     MAC_MINI_DIR = config.get("PATHS", "mac_mini_dir")
 
     # Read feature toggle flags from the INI file
-    USE_DROPBOX = config.getboolean("PATHS", "use_dropbox")
+    USE_DROPBOX = config.getboolean("DROPBOX", "use_dropbox")
     USE_TIME_CAPSULE = config.getboolean("TIME_CAPSULE", "use_time_capsule")
     USE_MAC_MINI = config.getboolean("PATHS", "use_mac_mini")
 
@@ -388,6 +388,74 @@ def backup_to_time_capsule(folder_name, local_unpacked_dir, local_stack_file, lo
         return False
     return True
 
+def backup_to_dropbox(folder_name, local_day_csv, local_monthly_csv, config):
+    """
+    Deploys verified daily and aggregated monthly CSV reports directly to Dropbox Cloud
+    using the Go-based dbxcli CLI tool from the server's user space environment.
+    """
+    if not USE_DROPBOX:
+        return False
+
+    # 1. Parse structural and security parameters from the INI file
+    csv_prefix = config.get('DROPBOX', 'dbx_csv_prefix').strip('/')
+    access_token = config.get('DROPBOX', 'dbx_access_token').strip()
+
+    if not access_token:
+        print("[Dropbox] Error: Missing dynamic 'dbx_access_token' inside configuration profile.")
+        return False
+
+    try:
+        year = folder_name[7:11]
+        month = folder_name[11:13]
+    except IndexError:
+        print(f"[Dropbox] Error: Malformed folder name structure: {folder_name}")
+        return False
+
+    print(f"[Dropbox] Initializing environment-driven cloud sync sequence for: {folder_name}")
+
+    # Inject the token safely into the subprocess execution environment dictionary
+    custom_env = os.environ.copy()
+    custom_env["DBXCLI_ACCESS_TOKEN"] = access_token
+
+    # Resolve target deep layouts inside Dropbox (forward slashes are native here)
+    remote_day_dir = f"/{csv_prefix}/{year}"
+    remote_monthly_dir = f"/{csv_prefix}/{year}/monthly/{month}"
+
+    # Step A: Sync Daily Raw CSV File
+    if local_day_csv and os.path.exists(local_day_csv):
+        day_csv_name = os.path.basename(local_day_csv)
+        remote_day_target = f"{remote_day_dir}/{day_csv_name}"
+
+        # dbxcli put syntax: dbxcli put <local_path> <remote_path>
+        cmd_day = ["dbxcli", "put", local_day_csv, remote_day_target]
+        try:
+            # Passing custom_env securely bypasses files authorization completely
+            subprocess.run(cmd_day, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True, env=custom_env)
+            print(f"[Dropbox] Success: Daily log transmitted -> {remote_day_target}")
+        except subprocess.CalledProcessError as e:
+            print(f"[Dropbox] Daily file deployment rejected. API return log: {e.stderr.strip()}")
+            return False
+        except Exception as e:
+            print(f"[Dropbox] Unexpected error during daily upload: {e}")
+            return False
+
+    # Step B: Sync Monolithic Monthly CSV Report (Overwrites cloud state with latest golden source data)
+    if local_monthly_csv and os.path.exists(local_monthly_csv):
+        monthly_csv_name = os.path.basename(local_monthly_csv)
+        remote_monthly_target = f"{remote_monthly_dir}/{monthly_csv_name}"
+
+        cmd_monthly = ["dbxcli", "put", local_monthly_csv, remote_monthly_target]
+        try:
+            subprocess.run(cmd_monthly, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True, env=custom_env)
+            print(f"[Dropbox] Success: Monolithic monthly report updated -> {remote_monthly_target}")
+        except subprocess.CalledProcessError as e:
+            print(f"[Dropbox] Monthly archive refresh rejected. API return log: {e.stderr.strip()}")
+            return False
+        except Exception as e:
+            print(f"[Dropbox] Unexpected error during monthly upload: {e}")
+            return False
+    return True
+
 
 def main():
     # --- CRON OVERLAP PROTECTION ---
@@ -459,6 +527,7 @@ def main():
         # --- 2. FAN-OUT SYNC FOR CSV AND UNPACKED DATA ---
         sync_to_tc_done = False
         sync_to_mac_done = False
+        sync_to_dropbox_done = False
 
         if extraction_success:
             print("Enforcing group write permissions (775/664) for extracted files...")
@@ -503,8 +572,7 @@ def main():
             )
 
             # 1. Capture the exact output path of your local golden sources
-            # Let's assume your script variables look like this:
-            golden_unpacked_dir = final_local_unpacked_dir # /mnt/files/pi/data/YEAR/MONTH/STATION/FOLDER
+            golden_unpacked_dir = final_local_unpacked_dir
 
             # Compile path to the verified deduplicated local monthly CSV
             golden_monthly_csv = os.path.join(LOCAL_CSV_DIR, year, "monthly", month, f"{year}_{month}_{cam_name}.csv")
@@ -519,7 +587,19 @@ def main():
                     local_monthly_csv=golden_monthly_csv,
                     config=config  # Pass the parsed configparser object down
                 )
-                print(f"Syncing data to Time Capsule: {sync_to_tc_done}")
+            else:
+                sync_to_tc_done = True
+
+            if USE_DROPBOX:
+                # 4. Fire the Dropbox upload engine sequence
+                sync_to_dropbox_done = backup_to_dropbox(
+                    folder_name=extracted_folder_name,
+                    local_day_csv=golden_day_csv,
+                    local_monthly_csv=golden_monthly_csv,
+                    config=config
+                )
+            else:
+                sync_to_dropbox_done = True
 
             if USE_MAC_MINI:
                 if mac_online:
@@ -535,8 +615,8 @@ def main():
 
         # --- 4. SECOND TASK LOGIC: ARCHIVE RELOCATION & CLEANUP ---
         # If external syncing targets are disabled or successful, run local folder consolidation
-        if sync_to_tc_done and (sync_to_mac_done or not mac_online):
-            if sync_to_tc_done and (sync_to_mac_done or not USE_MAC_MINI):
+        if sync_to_tc_done and (sync_to_mac_done or not mac_online) and sync_to_dropbox_done:
+            if sync_to_tc_done and sync_to_dropbox_done and (sync_to_mac_done or not USE_MAC_MINI):
                 final_archive_dir = os.path.join(LOCAL_ARCHIVE_ROOT, relative_target_path)
                 os.makedirs(final_archive_dir, exist_ok=True)
 
