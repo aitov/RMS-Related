@@ -410,12 +410,6 @@ def backup_to_mac(folder_name, local_unpacked_dir, local_stack_file, config):
 
     print(f"[Mac] Initializing transmission sync pipeline for: {folder_name}")
 
-    # Base modern smbclient array (No legacy flags required for macOS SMB v2/v3)
-    smb_base_cmd = [
-        "smbclient", f"//{mac_ip}/{mac_share}",
-        "-U", f"{mac_user}%{mac_password}"
-    ]
-
     # Compile the base credential block as a single string for shell execution
     smb_credentials_str = f"smbclient //{mac_ip}/{mac_share} -U '{mac_user}%{mac_password}'"
 
@@ -430,45 +424,50 @@ def backup_to_mac(folder_name, local_unpacked_dir, local_stack_file, config):
         current = ""
         for part in parts:
             current = f"{current}/{part}" if current else part
-            print(f"[Mac] Making directory {current}")
-            # Use shell execution to ensure quotes and slashes pass natively without parsing distortion
             full_shell_cmd = f"{smb_credentials_str} -c 'mkdir \"{current}\"'"
-            result = subprocess.run(full_shell_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
-
-            # Print output immediately if it's a genuine systemic block (not a collision)
-            if result.returncode != 0:
-                err_log = result.stderr.lower() + result.stdout.lower()
-                if "collision" not in err_log and "exists" not in err_log:
-                    print(f"[Mac mini mkdir log] Target: '{current}' -> Status: {result.stderr.strip()}")
+            subprocess.run(full_shell_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
 
     try:
         # Step A: Enforce deep path baseline setup on Mac mini
         safe_remote_mkdir(remote_day_dir)
         safe_remote_mkdir(remote_camera_stacks_dir)
 
-        # Step B: Mirror the entire Unpacked Day Folder content recursively from Golden Source
-        for root, _, files in os.walk(local_unpacked_dir):
-            for file in files:
-                local_file_path = os.path.join(root, file)
-                rel_path = os.path.relpath(local_file_path, local_unpacked_dir).replace(os.sep, '/')
-                remote_file_target = f"{remote_day_dir}/{rel_path}"
+        # ---------------------------------------------------------------------
+        # STEP B: RECURSIVE FILE MIRRORING FROM GOLDEN SOURCE
+        # ---------------------------------------------------------------------
+        if local_unpacked_dir and os.path.exists(local_unpacked_dir):
+            for root, _, files in os.walk(local_unpacked_dir):
+                for file in files:
+                    local_file_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(local_file_path, local_unpacked_dir).replace(os.sep, '/')
 
-                if "/" in rel_path:
-                    sub_dir_rel = rel_path.rpartition('/')[0]
-                    sub_dir_full = f"{remote_day_dir}/{sub_dir_rel}"
-                    safe_remote_mkdir(sub_dir_full)
+                    remote_file_target = f"{remote_day_dir}/{rel_path}"
 
-                # Execute put cleanly wrapped inside shell bounds
-                full_put_cmd = f"{smb_credentials_str} -c 'put \"{local_file_path}\" \"{remote_file_target}\"'"
-                subprocess.run(full_put_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+                    if "/" in rel_path:
+                        # SAFE: Extracting clean string path substring using [0] index
+                        sub_dir_rel = rel_path.rpartition('/')[0]
+                        sub_dir_full = f"{remote_day_dir}/{sub_dir_rel}"
+                        safe_remote_mkdir(sub_dir_full)
+
+                    # Unified shell string execution pattern for file deployment
+                    full_put_cmd = f"{smb_credentials_str} -c 'put \"{local_file_path}\" \"{remote_file_target}\"'"
+                    subprocess.run(full_put_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+            print(f"[Mac mini] Success: Raw data folder deployed to: {remote_day_dir}")
+        else:
+            print(f"[Mac mini] Warning: Source local folder is missing or invalid: {local_unpacked_dir}")
 
         print(f"[Mac] Success: Raw data folder deployed to: {remote_day_dir}")
 
         if local_stack_file and os.path.exists(local_stack_file):
             stack_name = os.path.basename(local_stack_file)
-            full_put_cmd = f"{smb_credentials_str} -c 'put \"{local_stack_file}\" \"{remote_camera_stacks_dir}/{stack_name}\"'"
-            subprocess.run(full_put_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
-            print(f"[Mac] Success: Central meteor stack image mirrored to: {remote_camera_stacks_dir}/{stack_name}")
+            remote_stack_target = f"{remote_camera_stacks_dir}/{stack_name}"
+
+            full_stack_cmd = f"{smb_credentials_str} -c 'put \"{local_stack_file}\" \"{remote_stack_target}\"'"
+            subprocess.run(full_stack_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            print(f"[Mac mini] Success: Central meteor stack image mirrored to: {remote_stack_target}")
+        else:
+            print(f"[Mac mini] Notice: Stack file is missing or path is empty.")
+        return True
 
     except Exception as e:
         print(f"[Mac] Unexpected architecture fault within backup sync block: {e}")
