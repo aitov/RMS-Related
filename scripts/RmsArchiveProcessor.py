@@ -36,7 +36,6 @@ try:
     USE_MAC_MINI = config.getboolean("PATHS", "use_mac_mini")
 
     MAC_MINI_IP = config.get("NETWORK", "mac_mini_ip")
-    DROPBOX_REMOTE_FOLDER = config.get("DROPBOX", "remote_folder")
 except (configparser.NoSectionError, configparser.NoOptionError) as e:
     print(f"Critical Error parsing configuration parameters: {e}")
     sys.exit(1)
@@ -60,19 +59,6 @@ def parse_archive_name(filename):
     if match:
         return match.group(1), match.group(2), match.group(3) # cam_name, year, month
     return None
-
-def upload_to_dropbox(local_csv_path):
-    """Uploads CSV files to Dropbox using the layout from the INI file"""
-    if not USE_DROPBOX or not os.path.exists(local_csv_path):
-        return False
-    try:
-        remote_path = os.path.join(DROPBOX_REMOTE_FOLDER, os.path.basename(local_csv_path))
-        print(f"Dropbox: Uploading {os.path.basename(local_csv_path)} -> {remote_path}")
-        subprocess.run(["dbxcli", "put", local_csv_path, remote_path], check=True)
-        return True
-    except Exception as e:
-        print(f"Dropbox upload failed for {local_csv_path}: {e}")
-        return False
 
 def sync_directory(src, dest):
     """Copies directories recursively acting like a simplified rsync/cp -r"""
