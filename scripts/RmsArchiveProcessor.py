@@ -426,6 +426,7 @@ def backup_to_mac(folder_name, local_unpacked_dir, local_stack_file, config):
             current = f"{current}/{part}" if current else part
             full_shell_cmd = f"{smb_credentials_str} -c 'mkdir \"{current}\"'"
             subprocess.run(full_shell_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+            print(f"[Mac] Success: Remote directory created for {current}")
 
     try:
         # Step A: Enforce deep path baseline setup on Mac mini
