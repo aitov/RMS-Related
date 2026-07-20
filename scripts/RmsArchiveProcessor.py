@@ -6,6 +6,7 @@ import shutil
 import tarfile
 import subprocess
 import configparser
+import requests
 
 # --- CONFIGURATION INITIALIZATION ---
 # Get the absolute directory where the script itself is located
@@ -318,6 +319,26 @@ def backup_to_time_capsule(folder_name, local_unpacked_dir, local_stack_file, lo
         return False
     return True
 
+def get_fresh_access_token():
+    """Automatically requests a fresh Access Token before the upload"""
+    url = "https://api.dropbox.com/oauth2/token"
+    refresh_token = config.get('DROPBOX', 'dbx_refresh_token')
+    app_key = config.get('DROPBOX', 'dbx_client_idn')
+    client_secret = config.get('DROPBOX', 'dbx_client_secret')
+    data = {
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+        "client_id": app_key,
+        "client_secret": client_secret,
+    }
+
+    response = requests.post(url, data=data)
+
+    if response.status_code == 200:
+        return response.json()["access_token"]
+    else:
+        raise Exception(f"Failed to refresh token: {response.text}")
+
 def backup_to_dropbox(folder_name, local_day_csv, local_monthly_csv, config):
     """
     Deploys verified daily and aggregated monthly CSV reports directly to Dropbox Cloud
@@ -328,7 +349,8 @@ def backup_to_dropbox(folder_name, local_day_csv, local_monthly_csv, config):
 
     # 1. Parse structural and security parameters from the INI file
     csv_prefix = config.get('DROPBOX', 'dbx_csv_prefix').strip('/')
-    access_token = config.get('DROPBOX', 'dbx_access_token').strip()
+    # 2. Get a fresh token (valid for 4 hours, but requested anew on every script run)
+    access_token = get_fresh_access_token()
 
     if not access_token:
         print("[Dropbox] Error: Missing dynamic 'dbx_access_token' inside configuration profile.")
