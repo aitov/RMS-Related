@@ -265,51 +265,70 @@ def backup_to_time_capsule(folder_name, local_unpacked_dir, local_stack_file, lo
         return "; ".join(commands)
 
     try:
-        # Step A: Generate and enforce full deep path baseline infrastructure
-        mkdir_sequence = (
-            f"{generate_sequential_mkdir(remote_day_dir)}; "
-            f"{generate_sequential_mkdir(stacks_dir)}; "
-            f"{generate_sequential_mkdir(remote_monthly_csv_dir)}; "
-            f"{generate_sequential_mkdir(remote_day_csv_dir)}"
-        )
-        subprocess.run(smb_base_cmd + ["-c", mkdir_sequence], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        print(f"[Time Capsule] Auditing sync state for folder: {folder_name}")
 
-        # Step B: Mirror the entire Unpacked Day Folder content recursively from Golden Source
-        for root, _, files in os.walk(local_unpacked_dir):
-            for file in files:
-                local_file_path = os.path.join(root, file)
-                rel_path = os.path.relpath(local_file_path, local_unpacked_dir).replace(os.sep, '/')
-                remote_file_target = f"{remote_day_dir}/{rel_path}"
+        # ---------------------------------------------------------------------
+        # PRE-CHECK 1: Verify raw daily directory state footprint via cd
+        # ---------------------------------------------------------------------
+        remote_day_dir_win = remote_day_dir.replace('/', '\\')
+        check_day_cmd = smb_base_cmd + ["-c", f"cd \"{remote_day_dir_win}\""]
+        day_check_result = subprocess.run(check_day_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-                if "/" in rel_path:
-                    sub_dir_rel = rel_path.rpartition('/')[0]
-                    sub_dir_full = f"{remote_day_dir}/{sub_dir_rel}"
-                    subprocess.run(smb_base_cmd + ["-c", generate_sequential_mkdir(sub_dir_full)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        skip_raw_data = (day_check_result.returncode == 0)
 
-                upload_file_cmd = smb_base_cmd + ["-c", f"put {local_file_path} {remote_file_target}"]
-                subprocess.run(upload_file_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+        # ---------------------------------------------------------------------
+        # STEP A & B: RAW DATA TRANSMISSION BLOCK
+        # ---------------------------------------------------------------------
+        if not skip_raw_data:
+            print(f"[Time Capsule] Target directory layout missing. Initializing payload delivery...")
 
-        print(f"[Time Capsule] Success: Raw data folder deployed to: {remote_day_dir}")
+            # Step A: Generate and enforce full deep path baseline infrastructure
+            mkdir_sequence = (
+                f"{generate_sequential_mkdir(remote_day_dir)}; "
+                f"{generate_sequential_mkdir(stacks_dir)}; "
+                f"{generate_sequential_mkdir(remote_monthly_csv_dir)}; "
+                f"{generate_sequential_mkdir(remote_day_csv_dir)}"
+            )
+            subprocess.run(smb_base_cmd + ["-c", mkdir_sequence], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-        # Step C: Upload Meteor Stack Image into central stacks directory
-        if local_stack_file and os.path.exists(local_stack_file):
-            stack_name = os.path.basename(local_stack_file)
-            upload_stack_cmd = smb_base_cmd + ["-c", f"put {local_stack_file} {stacks_dir}/{stack_name}"]
-            subprocess.run(upload_stack_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
-            print(f"[Time Capsule] Success: Central meteor stack image mirrored to: {stacks_dir}/{stack_name}")
+            # Step B: Mirror the entire Unpacked Day Folder content recursively from Golden Source
+            for root, _, files in os.walk(local_unpacked_dir):
+                for file in files:
+                    local_file_path = os.path.join(root, file)
+                    rel_path = os.path.relpath(local_file_path, local_unpacked_dir).replace(os.sep, '/')
+                    remote_file_target = f"{remote_day_dir}/{rel_path}"
 
-        # Step D: Upload the Monolithic Monthly CSV Report (Overwrites with latest state)
-        if local_monthly_csv and os.path.exists(local_monthly_csv):
-            csv_name = os.path.basename(local_monthly_csv)
-            upload_csv_cmd = smb_base_cmd + ["-c", f"put {local_monthly_csv} {remote_monthly_csv_dir}/{csv_name}"]
-            subprocess.run(upload_csv_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
-            print(f"[Time Capsule] Success: Aggregated monthly CSV report updated in: {remote_monthly_csv_dir}/{csv_name}")
-        # Copy day csv
-        if local_day_csv and os.path.exists(local_day_csv):
-            csv_name = os.path.basename(local_day_csv)
-            upload_csv_cmd = smb_base_cmd + ["-c", f"put {local_day_csv} {remote_day_csv_dir}/{csv_name}"]
-            subprocess.run(upload_csv_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
-            print(f"[Time Capsule] Success: Day csv updated in: {remote_day_csv_dir}/{csv_name}")
+                    if "/" in rel_path:
+                        sub_dir_rel = rel_path.rpartition('/')[0]
+                        sub_dir_full = f"{remote_day_dir}/{sub_dir_rel}"
+                        subprocess.run(smb_base_cmd + ["-c", generate_sequential_mkdir(sub_dir_full)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+
+                    upload_file_cmd = smb_base_cmd + ["-c", f"put {local_file_path} {remote_file_target}"]
+                    subprocess.run(upload_file_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+
+            print(f"[Time Capsule] Success: Raw data folder deployed to: {remote_day_dir}")
+
+            # Step C: Upload Meteor Stack Image into central stacks directory
+            if local_stack_file and os.path.exists(local_stack_file):
+                stack_name = os.path.basename(local_stack_file)
+                upload_stack_cmd = smb_base_cmd + ["-c", f"put {local_stack_file} {stacks_dir}/{stack_name}"]
+                subprocess.run(upload_stack_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+                print(f"[Time Capsule] Success: Central meteor stack image mirrored to: {stacks_dir}/{stack_name}")
+
+            # Step D: Upload the Monolithic Monthly CSV Report (Overwrites with latest state)
+            if local_monthly_csv and os.path.exists(local_monthly_csv):
+                csv_name = os.path.basename(local_monthly_csv)
+                upload_csv_cmd = smb_base_cmd + ["-c", f"put {local_monthly_csv} {remote_monthly_csv_dir}/{csv_name}"]
+                subprocess.run(upload_csv_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+                print(f"[Time Capsule] Success: Aggregated monthly CSV report updated in: {remote_monthly_csv_dir}/{csv_name}")
+            # Copy day csv
+            if local_day_csv and os.path.exists(local_day_csv):
+                csv_name = os.path.basename(local_day_csv)
+                upload_csv_cmd = smb_base_cmd + ["-c", f"put {local_day_csv} {remote_day_csv_dir}/{csv_name}"]
+                subprocess.run(upload_csv_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+                print(f"[Time Capsule] Success: Day csv updated in: {remote_day_csv_dir}/{csv_name}")
+        else:
+            print(f"[Time Capsule] Notice: Day directory already verified on host. Skipping raw data deployment.")
 
     except subprocess.CalledProcessError as e:
         print(f"[Time Capsule] Transmission pipeline aborted. Remote diagnostic: {e.stderr.strip()}")
@@ -363,6 +382,20 @@ def backup_to_dropbox(folder_name, local_day_csv, local_monthly_csv, config):
         print(f"[Dropbox] Error: Malformed folder name structure: {folder_name}")
         return False
 
+    # Safe utility function to resolve remote file sizes via parsing dbxcli output layout text
+    def get_dropbox_file_size(remote_file_path):
+        cmd = ["dbxcli", "ls", "-l", remote_file_path]
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=custom_env)
+        if res.returncode == 0 and res.stdout.strip():
+            # Standard dbxcli long response structure matches pattern: <filename> \t <size_string> \t <date>
+            parts = res.stdout.strip().split('\t')
+            if len(parts) >= 2:
+                # Clean and parse size data digits string explicitly
+                size_str = ''.join(filter(str.isdigit, parts[1]))
+                if size_str:
+                    return int(size_str)
+        return -1
+
     print(f"[Dropbox] Initializing environment-driven cloud sync sequence for: {folder_name}")
 
     # Inject the token safely into the subprocess execution environment dictionary
@@ -381,9 +414,14 @@ def backup_to_dropbox(folder_name, local_day_csv, local_monthly_csv, config):
         # dbxcli put syntax: dbxcli put <local_path> <remote_path>
         cmd_day = ["dbxcli", "put", local_day_csv, remote_day_target]
         try:
-            # Passing custom_env securely bypasses files authorization completely
-            subprocess.run(cmd_day, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True, env=custom_env)
-            print(f"[Dropbox] Success: Daily log transmitted -> {remote_day_target}")
+            if get_dropbox_file_size(remote_day_target) == -1:
+                print(f"[Dropbox] Daily log not found in cloud. Uploading file layout...")
+                # Passing custom_env securely bypasses files authorization completely
+                subprocess.run(cmd_day, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True, env=custom_env)
+                print(f"[Dropbox] Success: Daily log transmitted -> {remote_day_target}")
+            else:
+                print(f"[Dropbox] Notice: Daily log already verified in cloud layout. Skipping.")
+
         except subprocess.CalledProcessError as e:
             print(f"[Dropbox] Daily file deployment rejected. API return log: {e.stderr.strip()}")
             return False
@@ -398,8 +436,14 @@ def backup_to_dropbox(folder_name, local_day_csv, local_monthly_csv, config):
 
         cmd_monthly = ["dbxcli", "put", local_monthly_csv, remote_monthly_target]
         try:
-            subprocess.run(cmd_monthly, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True, env=custom_env)
-            print(f"[Dropbox] Success: Monolithic monthly report updated -> {remote_monthly_target}")
+            local_csv_size = os.path.getsize(local_monthly_csv)
+            remote_csv_size = get_dropbox_file_size(remote_monthly_target)
+            if local_csv_size > remote_csv_size:
+                print(f"[Dropbox] CSV Size mismatch detected (Local: {local_csv_size} b, Cloud: {remote_csv_size} b). Syncing delta...")
+                subprocess.run(cmd_monthly, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True, env=custom_env)
+                print(f"[Dropbox] Success: Monolithic monthly report updated -> {remote_monthly_target}")
+            else:
+                print(f"[Dropbox] Notice: Monolithic cloud monthly report matches size byte-for-byte. Skipping.")
         except subprocess.CalledProcessError as e:
             print(f"[Dropbox] Monthly archive refresh rejected. API return log: {e.stderr.strip()}")
             return False
@@ -450,54 +494,68 @@ def backup_to_mac(folder_name, local_unpacked_dir, local_stack_file, config):
             subprocess.run(full_shell_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
 
     try:
-        # Step A: Enforce deep path baseline setup on Mac mini
-        safe_remote_mkdir(remote_day_dir)
-        safe_remote_mkdir(remote_camera_stacks_dir)
+        print(f"[Mac mini] Auditing sync state for folder: {folder_name}")
+        check_day_cmd = f"{smb_credentials_str} -c 'cd \"{remote_day_dir}\"'"
+        day_check_result = subprocess.run(check_day_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+
+        skip_raw_data = (day_check_result.returncode == 0)
 
         # ---------------------------------------------------------------------
-        # STEP B: RECURSIVE FILE MIRRORING FROM GOLDEN SOURCE
+        # STEP A & B: RAW DATA DEPLOYMENT (Only triggers if folder is missing)
         # ---------------------------------------------------------------------
-        if local_unpacked_dir and os.path.exists(local_unpacked_dir):
-            # A local set to keep track of directories we have already verified/created during this run
-            created_dirs_cache = set()
+        if not skip_raw_data:
+            print(f"[Mac mini] Directory not found. Launching full raw deployment sequence...")
+            # Step A: Enforce deep path baseline setup on Mac mini
+            safe_remote_mkdir(remote_day_dir)
+            safe_remote_mkdir(remote_camera_stacks_dir)
 
-            for root, _, files in os.walk(local_unpacked_dir):
-                for file in files:
-                    local_file_path = os.path.join(root, file)
-                    rel_path = os.path.relpath(local_file_path, local_unpacked_dir).replace(os.sep, '/')
+            # ---------------------------------------------------------------------
+            # STEP B: RECURSIVE FILE MIRRORING FROM GOLDEN SOURCE
+            # ---------------------------------------------------------------------
+            if local_unpacked_dir and os.path.exists(local_unpacked_dir):
+                # A local set to keep track of directories we have already verified/created during this run
+                created_dirs_cache = set()
 
-                    remote_file_target = f"{remote_day_dir}/{rel_path}"
+                for root, _, files in os.walk(local_unpacked_dir):
+                    for file in files:
+                        local_file_path = os.path.join(root, file)
+                        rel_path = os.path.relpath(local_file_path, local_unpacked_dir).replace(os.sep, '/')
 
-                    # FIXED: Using clean os.path.dirname instead of rpartition tuple
-                    # For 'rms/file.csv' it returns 'rms'. For root files it returns '' (empty string).
-                    parent_sub_dir = os.path.dirname(rel_path)
+                        remote_file_target = f"{remote_day_dir}/{rel_path}"
 
-                    if parent_sub_dir:
-                        sub_dir_full = f"{remote_day_dir}/{parent_sub_dir}"
+                        # FIXED: Using clean os.path.dirname instead of rpartition tuple
+                        # For 'rms/file.csv' it returns 'rms'. For root files it returns '' (empty string).
+                        parent_sub_dir = os.path.dirname(rel_path)
 
-                        # SPEED FIX: Only trigger safe_remote_mkdir if the path is NOT in our local cache
-                        if sub_dir_full not in created_dirs_cache:
-                            safe_remote_mkdir(sub_dir_full)
-                            created_dirs_cache.add(sub_dir_full)  # Remember it for subsequent files
+                        if parent_sub_dir:
+                            sub_dir_full = f"{remote_day_dir}/{parent_sub_dir}"
 
-                    # Unified shell string execution pattern for file deployment
-                    full_put_cmd = f"{smb_credentials_str} -c 'put \"{local_file_path}\" \"{remote_file_target}\"'"
-                    subprocess.run(full_put_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
-            print(f"[Mac mini] Success: Raw data folder deployed to: {remote_day_dir}")
+                            # SPEED FIX: Only trigger safe_remote_mkdir if the path is NOT in our local cache
+                            if sub_dir_full not in created_dirs_cache:
+                                safe_remote_mkdir(sub_dir_full)
+                                created_dirs_cache.add(sub_dir_full)  # Remember it for subsequent files
+
+                        # Unified shell string execution pattern for file deployment
+                        full_put_cmd = f"{smb_credentials_str} -c 'put \"{local_file_path}\" \"{remote_file_target}\"'"
+                        subprocess.run(full_put_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True)
+                print(f"[Mac mini] Success: Raw data folder deployed to: {remote_day_dir}")
+            else:
+                print(f"[Mac mini] Warning: Source local folder is missing or invalid: {local_unpacked_dir}")
+
+            print(f"[Mac] Success: Raw data folder deployed to: {remote_day_dir}")
+
+            if local_stack_file and os.path.exists(local_stack_file):
+                stack_name = os.path.basename(local_stack_file)
+                remote_stack_target = f"{remote_camera_stacks_dir}/{stack_name}"
+
+                full_stack_cmd = f"{smb_credentials_str} -c 'put \"{local_stack_file}\" \"{remote_stack_target}\"'"
+                subprocess.run(full_stack_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                print(f"[Mac mini] Success: Central meteor stack image mirrored to: {remote_stack_target}")
+            else:
+                print(f"[Mac mini] Notice: Stack file is missing or path is empty.")
         else:
-            print(f"[Mac mini] Warning: Source local folder is missing or invalid: {local_unpacked_dir}")
+            print(f"[Mac mini] Notice: Day directory already verified on host. Skipping raw data deployment.")
 
-        print(f"[Mac] Success: Raw data folder deployed to: {remote_day_dir}")
-
-        if local_stack_file and os.path.exists(local_stack_file):
-            stack_name = os.path.basename(local_stack_file)
-            remote_stack_target = f"{remote_camera_stacks_dir}/{stack_name}"
-
-            full_stack_cmd = f"{smb_credentials_str} -c 'put \"{local_stack_file}\" \"{remote_stack_target}\"'"
-            subprocess.run(full_stack_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            print(f"[Mac mini] Success: Central meteor stack image mirrored to: {remote_stack_target}")
-        else:
-            print(f"[Mac mini] Notice: Stack file is missing or path is empty.")
         return True
 
     except Exception as e:
