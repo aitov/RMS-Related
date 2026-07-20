@@ -414,7 +414,9 @@ def backup_to_dropbox(folder_name, local_day_csv, local_monthly_csv, config):
         # dbxcli put syntax: dbxcli put <local_path> <remote_path>
         cmd_day = ["dbxcli", "put", local_day_csv, remote_day_target]
         try:
-            if get_dropbox_file_size(remote_day_target) == -1:
+            file_size = get_dropbox_file_size(remote_day_target)
+            print(f"[Dropbox] : Daily log file size: {file_size}")
+            if file_size == -1:
                 print(f"[Dropbox] Daily log not found in cloud. Uploading file layout...")
                 # Passing custom_env securely bypasses files authorization completely
                 subprocess.run(cmd_day, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True, env=custom_env)
@@ -438,6 +440,7 @@ def backup_to_dropbox(folder_name, local_day_csv, local_monthly_csv, config):
         try:
             local_csv_size = os.path.getsize(local_monthly_csv)
             remote_csv_size = get_dropbox_file_size(remote_monthly_target)
+            print(f"[Dropbox] : Monthly log file size: {remote_csv_size}")
             if local_csv_size > remote_csv_size:
                 print(f"[Dropbox] CSV Size mismatch detected (Local: {local_csv_size} b, Cloud: {remote_csv_size} b). Syncing delta...")
                 subprocess.run(cmd_monthly, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True, env=custom_env)
