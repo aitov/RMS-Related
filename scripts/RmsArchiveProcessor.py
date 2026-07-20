@@ -387,7 +387,6 @@ def backup_to_dropbox(folder_name, local_day_csv, local_monthly_csv, config):
     # Inject the token safely into the subprocess execution environment dictionary
     custom_env = os.environ.copy()
     custom_env["DBXCLI_ACCESS_TOKEN"] = access_token
-    print(access_token)
     # Resolve target deep layouts inside Dropbox (forward slashes are native here)
     remote_day_dir = f"/{csv_prefix}/{year}"
     remote_monthly_dir = f"/{csv_prefix}/{year}/monthly/{month}"
