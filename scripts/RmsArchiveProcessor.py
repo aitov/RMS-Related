@@ -323,7 +323,7 @@ def get_fresh_access_token():
     """Automatically requests a fresh Access Token before the upload"""
     url = "https://api.dropbox.com/oauth2/token"
     refresh_token = config.get('DROPBOX', 'dbx_refresh_token')
-    app_key = config.get('DROPBOX', 'dbx_client_idn')
+    app_key = config.get('DROPBOX', 'dbx_client_id')
     client_secret = config.get('DROPBOX', 'dbx_client_secret')
     data = {
         "grant_type": "refresh_token",
