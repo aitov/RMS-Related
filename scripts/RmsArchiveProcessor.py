@@ -386,7 +386,6 @@ def backup_to_dropbox(folder_name, local_day_csv, local_monthly_csv, config):
     def get_dropbox_file_size(remote_file_path):
         cmd = ["dbxcli", "ls", "-l", remote_file_path]
         res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=custom_env)
-        print(f"code = {res.stdout} , out = {res.stdout}, err = {res.stderr}, path = {remote_file_path}")
         if res.returncode == 0 and res.stdout.strip():
             # Standard dbxcli long response structure matches pattern: <filename> \t <size_string> \t <date>
             parts = res.stdout.strip().split('\t')
@@ -402,7 +401,7 @@ def backup_to_dropbox(folder_name, local_day_csv, local_monthly_csv, config):
     # Inject the token safely into the subprocess execution environment dictionary
     custom_env = os.environ.copy()
     custom_env["DBXCLI_ACCESS_TOKEN"] = access_token
-
+    print(access_token)
     # Resolve target deep layouts inside Dropbox (forward slashes are native here)
     remote_day_dir = f"/{csv_prefix}/{year}"
     remote_monthly_dir = f"/{csv_prefix}/{year}/monthly/{month}"
