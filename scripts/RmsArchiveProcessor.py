@@ -382,20 +382,6 @@ def backup_to_dropbox(folder_name, local_day_csv, local_monthly_csv, config):
         print(f"[Dropbox] Error: Malformed folder name structure: {folder_name}")
         return False
 
-    # Safe utility function to resolve remote file sizes via parsing dbxcli output layout text
-    def get_dropbox_file_size(remote_file_path):
-        cmd = ["dbxcli", "ls", "-l", remote_file_path]
-        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=custom_env)
-        if res.returncode == 0 and res.stdout.strip():
-            # Standard dbxcli long response structure matches pattern: <filename> \t <size_string> \t <date>
-            parts = res.stdout.strip().split('\t')
-            if len(parts) >= 2:
-                # Clean and parse size data digits string explicitly
-                size_str = ''.join(filter(str.isdigit, parts[1]))
-                if size_str:
-                    return int(size_str)
-        return -1
-
     print(f"[Dropbox] Initializing environment-driven cloud sync sequence for: {folder_name}")
 
     # Inject the token safely into the subprocess execution environment dictionary
@@ -411,16 +397,28 @@ def backup_to_dropbox(folder_name, local_day_csv, local_monthly_csv, config):
         day_csv_name = os.path.basename(local_day_csv)
         remote_day_target = f"{remote_day_dir}/{day_csv_name}"
 
-        # dbxcli put syntax: dbxcli put <local_path> <remote_path>
-        cmd_day = ["dbxcli", "put", local_day_csv, remote_day_target]
         try:
-            if get_dropbox_file_size(remote_day_target) == -1:
-                print(f"[Dropbox] Daily log not found in cloud. Uploading file layout...")
-                # Passing custom_env securely bypasses files authorization completely
-                subprocess.run(cmd_day, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True, env=custom_env)
-                print(f"[Dropbox] Success: Daily log transmitted -> {remote_day_target}")
-            else:
-                print(f"[Dropbox] Notice: Daily log already verified in cloud layout. Skipping.")
+            # Fast check if daily file already exists in cloud via simple ls exit status
+            check_cmd = ["dbxcli", "ls", remote_day_target]
+            check_res = subprocess.run(check_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=custom_env)
+
+            # OPTIMIZATION: If file exists (return code 0), skip BOTH daily and monthly uploads!
+            if check_res.returncode == 0:
+                print(f"[Dropbox] Notice: Daily log already verified in cloud layout. Skipping entire archive sequence.")
+                return True
+
+            cmd_day = ["dbxcli", "put", local_day_csv, remote_day_target]
+            # Passing custom_env securely bypasses files authorization completely
+            subprocess.run(cmd_day, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True, env=custom_env)
+            print(f"[Dropbox] Success: Daily log transmitted -> {remote_day_target}")
+
+            # Step B: Sync Monolithic Monthly CSV Report (Overwrites cloud state with latest golden source data)
+            if local_monthly_csv and os.path.exists(local_monthly_csv):
+                monthly_csv_name = os.path.basename(local_monthly_csv)
+                remote_monthly_target = f"{remote_monthly_dir}/{monthly_csv_name}"
+                cmd_monthly = ["dbxcli", "put", local_monthly_csv, remote_monthly_target]
+                subprocess.run(cmd_monthly, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True, env=custom_env)
+                print(f"[Dropbox] Success: Monolithic monthly report updated -> {remote_monthly_target}")
 
         except subprocess.CalledProcessError as e:
             print(f"[Dropbox] Daily file deployment rejected. API return log: {e.stderr.strip()}")
@@ -429,27 +427,6 @@ def backup_to_dropbox(folder_name, local_day_csv, local_monthly_csv, config):
             print(f"[Dropbox] Unexpected error during daily upload: {e}")
             return False
 
-    # Step B: Sync Monolithic Monthly CSV Report (Overwrites cloud state with latest golden source data)
-    if local_monthly_csv and os.path.exists(local_monthly_csv):
-        monthly_csv_name = os.path.basename(local_monthly_csv)
-        remote_monthly_target = f"{remote_monthly_dir}/{monthly_csv_name}"
-
-        cmd_monthly = ["dbxcli", "put", local_monthly_csv, remote_monthly_target]
-        try:
-            local_csv_size = os.path.getsize(local_monthly_csv)
-            remote_csv_size = get_dropbox_file_size(remote_monthly_target)
-            if local_csv_size > remote_csv_size:
-                print(f"[Dropbox] CSV Size mismatch detected (Local: {local_csv_size} b, Cloud: {remote_csv_size} b). Syncing delta...")
-                subprocess.run(cmd_monthly, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True, env=custom_env)
-                print(f"[Dropbox] Success: Monolithic monthly report updated -> {remote_monthly_target}")
-            else:
-                print(f"[Dropbox] Notice: Monolithic cloud monthly report matches size byte-for-byte. Skipping.")
-        except subprocess.CalledProcessError as e:
-            print(f"[Dropbox] Monthly archive refresh rejected. API return log: {e.stderr.strip()}")
-            return False
-        except Exception as e:
-            print(f"[Dropbox] Unexpected error during monthly upload: {e}")
-            return False
     return True
 
 def backup_to_mac(folder_name, local_unpacked_dir, local_stack_file, config):
