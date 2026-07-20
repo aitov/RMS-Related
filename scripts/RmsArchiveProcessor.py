@@ -386,6 +386,7 @@ def backup_to_dropbox(folder_name, local_day_csv, local_monthly_csv, config):
     def get_dropbox_file_size(remote_file_path):
         cmd = ["dbxcli", "ls", "-l", remote_file_path]
         res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=custom_env)
+        print(f"code = {res.stdout} , out = {res.stdout}, err = {res.stderr}, path = {remote_file_path}")
         if res.returncode == 0 and res.stdout.strip():
             # Standard dbxcli long response structure matches pattern: <filename> \t <size_string> \t <date>
             parts = res.stdout.strip().split('\t')
@@ -414,9 +415,7 @@ def backup_to_dropbox(folder_name, local_day_csv, local_monthly_csv, config):
         # dbxcli put syntax: dbxcli put <local_path> <remote_path>
         cmd_day = ["dbxcli", "put", local_day_csv, remote_day_target]
         try:
-            file_size = get_dropbox_file_size(remote_day_target)
-            print(f"[Dropbox] : Daily log file size: {file_size}")
-            if file_size == -1:
+            if get_dropbox_file_size(remote_day_target) == -1:
                 print(f"[Dropbox] Daily log not found in cloud. Uploading file layout...")
                 # Passing custom_env securely bypasses files authorization completely
                 subprocess.run(cmd_day, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True, env=custom_env)
@@ -440,7 +439,6 @@ def backup_to_dropbox(folder_name, local_day_csv, local_monthly_csv, config):
         try:
             local_csv_size = os.path.getsize(local_monthly_csv)
             remote_csv_size = get_dropbox_file_size(remote_monthly_target)
-            print(f"[Dropbox] : Monthly log file size: {remote_csv_size}")
             if local_csv_size > remote_csv_size:
                 print(f"[Dropbox] CSV Size mismatch detected (Local: {local_csv_size} b, Cloud: {remote_csv_size} b). Syncing delta...")
                 subprocess.run(cmd_monthly, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True, env=custom_env)
