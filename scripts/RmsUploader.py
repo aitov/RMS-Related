@@ -6,6 +6,7 @@ import fcntl
 import time
 import sys
 import configparser
+import subprocess
 import paramiko
 
 QUEUE_FILE = os.path.expanduser("~/rms_upload_queue.txt")
@@ -106,6 +107,123 @@ def upload_file_with_resume(sftp, local_path, remote_path):
     sftp.rename(part_remote_path, remote_path)
     return True
 
+def check_ping(hostname):
+    """
+    Checks if the local server is alive using a network ping.
+    Returns True if reachable, False otherwise.
+    """
+    # '-c 1' sends 1 packet (Linux/Raspberry Pi flag)
+    # '-W 2' sets a 2-second timeout so the script won't hang if the server is off
+    command = ['ping', '-c', '1', '-W', '2', hostname]
+    return subprocess.call(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
+
+
+def upload_to_windows_with_resume(local_file_path, ini_path):
+    """
+    Loads configuration settings and uploads a file to the Windows server via SFTP.
+    Supports resuming interrupted transfers by appending missing bytes.
+    """
+    if not os.path.exists(local_file_path):
+        print(f"[LOCAL] Error: Local file '{local_file_path}' does not exist.")
+        return False
+
+    # Initialize the configuration parser
+    config = configparser.ConfigParser()
+    config.read(ini_path)
+
+    # Check if the local Windows upload is enabled in settings
+    if not config.has_section('LOCAL_WINDOWS') or not config.getboolean('LOCAL_WINDOWS', 'enabled'):
+        print("[LOCAL] Local Windows upload is disabled in config.")
+        return False
+
+    # Extract connection variables
+    host = config.get('LOCAL_WINDOWS', 'host')
+    port = config.getint('LOCAL_WINDOWS', 'port', fallback=22)
+    user = config.get('LOCAL_WINDOWS', 'user')
+    password = config.get('LOCAL_WINDOWS', 'password')
+    remote_folder = config.get('LOCAL_WINDOWS', 'remote_folder')
+
+    # 1. Verify network availability
+    print(f"[LOCAL] Checking network availability for host {host}...")
+    if not check_ping(host):
+        print(f"[LOCAL] Error: Server {host} is unreachable. Skipping upload.")
+        return False
+
+    # 2. Establish connection and upload/resume the archive
+    transport = None
+    sftp = None
+    try:
+        print(f"[LOCAL] Connecting to {host}:{port} as user '{user}'...")
+        transport = paramiko.Transport((host, port))
+        transport.connect(username=user, password=password)
+
+        sftp = paramiko.SFTPClient.from_transport(transport)
+
+        # Extract filename and construct destination path
+        file_name = os.path.basename(local_file_path)
+        if not remote_folder.endswith('/'):
+            remote_folder += '/'
+        remote_file_path = f"{remote_folder}{file_name}"
+
+        local_file_size = os.path.getsize(local_file_path)
+        remote_file_size = 0
+
+        # Check if the file already exists on the remote Windows server
+        try:
+            remote_stat = sftp.stat(remote_file_path)
+            remote_file_size = remote_stat.st_size
+            print(f"[LOCAL] Remote file found. Size: {remote_file_size} bytes.")
+        except IOError:
+            # IOError means the file does not exist yet on the remote server
+            print("[LOCAL] Remote file does not exist. Starting a fresh upload.")
+
+        # Evaluate transfer strategy based on file size mismatch
+        if remote_file_size == local_file_size:
+            print(f"[LOCAL] File '{file_name}' is already fully uploaded. Skipping.")
+            return True
+        elif remote_file_size > local_file_size:
+            print(
+                f"[LOCAL] Warning: Remote file is LARGER than local file ({remote_file_size} > {local_file_size}). Overwriting entirely.")
+            remote_file_size = 0  # Reset offset to force full overwrite
+
+        # Open local and remote files to perform the block-by-block upload chunk stream
+        if remote_file_size > 0:
+            print(f"[LOCAL] Resuming upload from offset {remote_file_size} bytes...")
+            # 'r+b' opens the file for update (reading and writing) without truncating it
+            remote_file = sftp.open(remote_file_path, mode='r+b')
+            remote_file.seek(remote_file_size)
+        else:
+            # 'wb' opens a brand new file or truncates an existing one to zero length
+            remote_file = sftp.open(remote_file_path, mode='wb')
+
+        with open(local_file_path, 'rb') as local_file:
+            if remote_file_size > 0:
+                local_file.seek(remote_file_size)
+
+            # Stream the remaining data in chunks (32KB blocks)
+            chunk_size = 32768
+            while True:
+                chunk = local_file.read(chunk_size)
+                if not chunk:
+                    break
+                remote_file.write(chunk)
+
+        remote_file.close()
+        print(f"[LOCAL] File '{file_name}' successfully processed/resumed on the Windows server!")
+        return True
+
+    except Exception as e:
+        print(f"[LOCAL] SFTP Upload Error occurred: {e}")
+        return False
+
+    finally:
+        # Always clean up and close connections
+        if sftp:
+            sftp.close()
+        if transport:
+            transport.close()
+
+
 def main():
     # 1. Rigid process protection using a file descriptor lock.
     # If the daemon is already running from startup, any duplicate process exits instantly.
@@ -129,11 +247,6 @@ def main():
             time.sleep(RETRY_DELAY)
             continue
 
-        if not sftp_config["enabled"]:
-            print("SFTP is disabled in processing.ini. Waiting for next check...")
-            time.sleep(IDLE_DELAY)
-            continue
-
         # Check if there is any work in the queue file
         if not os.path.exists(QUEUE_FILE) or os.path.getsize(QUEUE_FILE) == 0:
             # Queue is empty - sleep for 1 minute and go to the next check cycle
@@ -147,7 +260,14 @@ def main():
         if not files:
             time.sleep(IDLE_DELAY)
             continue
+        # If the local Windows upload is enabled, attempt to upload each file in the queue
+        for local_file in files:
+              upload_to_windows_with_resume(local_file, CONFIG_FILE)
 
+        if not sftp_config["enabled"]:
+            print("SFTP is disabled in processing.ini. Waiting for next check...")
+            time.sleep(IDLE_DELAY)
+            continue
         # Establish connection with your Proxmox server
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())  # Bypasses StrictHostKeyChecking
