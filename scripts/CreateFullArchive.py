@@ -57,11 +57,17 @@ def createFullArchiveInteral(captured_night_dir, archived_night_dir, config, del
     newConfig = deepcopy(config)
     newConfig.upload_mode = 1
     print("Full archive dir  : {}".format(full_archive_dir))
-    archive_name = archiveDetections(captured_night_dir, full_archive_dir, ff_detected, newConfig)
-    print("Archived to  : {}".format(archive_name))
+    archiveDetections(captured_night_dir, full_archive_dir, ff_detected, newConfig)
+    print("Created full archive dir")
 
     if process_folder:
         processFiles(captured_night_dir, full_archive_dir, archived_night_dir + "_processed")
+
+    # Create the archive ZIP after processing to do not miss missed_fits files
+    archive_name = os.path.join(os.path.abspath(os.path.join(full_archive_dir, os.pardir)),
+                                    os.path.basename(full_archive_dir) + '_detected')
+    archive_name = shutil.make_archive(os.path.join(full_archive_dir, archive_name), 'bztar', full_archive_dir)
+    print("Archived full dir to  : {}".format(archive_name))
 
     if delete_folder:
         shutil.rmtree(full_archive_dir)
@@ -89,13 +95,8 @@ def archiveDetections(captured_path, archived_path, ff_detected, config):
     extra_files = getExtraFiles(captured_path)
 
     if file_list:
-        # Create the archive ZIP in the parent directory of the archive directory
-        archive_name = os.path.join(os.path.abspath(os.path.join(archived_path, os.pardir)),
-                                    os.path.basename(archived_path) + '_detected')
-        # Archive the files
-        archive_name = archiveDir(captured_path, file_list, archived_path, archive_name, False, extra_files)
-        return archive_name
-    return None
+        # create and fill folder for archive
+        archiveDir(captured_path, file_list, archived_path, None, False, extra_files, False)
 
 
 def getExtraFiles(captured_path):
