@@ -57,7 +57,7 @@ def createFullArchiveInteral(captured_night_dir, archived_night_dir, config, del
     newConfig = deepcopy(config)
     newConfig.upload_mode = 1
     print("Full archive dir  : {}".format(full_archive_dir))
-    archiveDetections(captured_night_dir, full_archive_dir, ff_detected, newConfig)
+    prepareFullArchiveDir(captured_night_dir, full_archive_dir, ff_detected, newConfig)
     print("Created full archive dir")
 
     if process_folder:
@@ -89,7 +89,7 @@ def getDetectedMeteors(meteor_list):
     return meteors
 
 
-def archiveDetections(captured_path, archived_path, ff_detected, config):
+def prepareFullArchiveDir(captured_path, archived_path, ff_detected, config):
     # Get the list of files to archive
     file_list = selectFiles(config, captured_path, ff_detected)
     extra_files = getExtraFiles(captured_path)
