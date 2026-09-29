@@ -709,6 +709,37 @@ def main():
         else:
             print("Keeping archives in root uploads folder until all drives comes synced.")
 
+    # Retry full-archive relocation after processing, in case a full archive
+    # finished downloading after its matching processed archive was handled.
+    if os.path.isdir(FULL_DIR):
+        for full_filename in os.listdir(FULL_DIR):
+            if full_filename.endswith(".part") or not full_filename.endswith("_full_detected.tar.bz2"):
+                continue
+
+            parsed_data = parse_archive_name(full_filename)
+            if not parsed_data:
+                print(f"Skipping unknown full archive format: {full_filename}")
+                continue
+
+            cam_name, year, month = parsed_data
+            relative_target_path = os.path.join(year, month, cam_name)
+            processed_filename = (
+                full_filename[:-len("_full_detected.tar.bz2")]
+                + "_processed_detected.tar.bz2"
+            )
+            final_archive_dir = os.path.join(LOCAL_ARCHIVE_ROOT, relative_target_path)
+            processed_archive_path = os.path.join(final_archive_dir, processed_filename)
+
+            if not os.path.exists(processed_archive_path):
+                continue
+
+            local_full_path = os.path.join(FULL_DIR, full_filename)
+            print(f"Matching processed archive found for {full_filename}. Relocating to {final_archive_dir}...")
+            try:
+                shutil.move(local_full_path, os.path.join(final_archive_dir, full_filename))
+            except Exception as e:
+                print(f"Failed to move raw archive file {full_filename}: {e}")
+
     fcntl.flock(lock_f, fcntl.LOCK_UN)
 
 if __name__ == "__main__":
