@@ -243,9 +243,7 @@ def backup_to_time_capsule(folder_name, local_unpacked_dir, local_stack_file, lo
     smb_base_cmd = [
         "smbclient", f"//{tc_ip}/{tc_share}",
         "-U", f"{tc_user}%{tc_password}",
-        "--option=client min protocol=NT1",
-        "--option=client use spnego=no",
-        "--option=client ntlmv2 auth=no"
+        "--option=client min protocol=SMB3",
     ]
 
     # Resolve target deep layouts
